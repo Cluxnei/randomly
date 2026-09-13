@@ -21,6 +21,10 @@ literally true: the catalogue *is* data.
       "module": "numbers",
       "version": 1,
       "renderer": "chart",
+      "formats": ["application/json", "text/plain"],
+      "sensitive": false,
+      "reproducible": true,
+      "uses_entropy": true,
       "params": [
         {"name":"count","type":"int","label":"How many","default":100,"min":1,"max":10000},
         {"name":"mu","type":"float","label":"Mean (μ)","default":0,"min":-1000,"max":1000},
@@ -135,9 +139,46 @@ being reproducible is worse than none.
 
 ## Output formats
 
-`Accept: application/json` (default), `text/plain` (just `display` — perfect for
-`curl` in a shell script), `image/png` (pattern/image generators), `audio/wav`
-(audio generators, rendered server-side only for this endpoint).
+Every generator is fully usable over HTTP. A canvas or audio generator returns a spec
+by design — that is what keeps the studio's responses small and its sliders instant —
+but an API caller handed a *description* of an image has not been given an image.
+
+| Accept / `?format=` | Returns | Applies to |
+|---|---|---|
+| `application/json` (default) | value, display, meta, receipt, seed | everything |
+| `text/plain` | just `display` | everything |
+| `image/png` | the rendered image | the 8 canvas generators |
+| `audio/wav` | 16-bit PCM, 44.1 kHz stereo | the 5 audio generators |
+
+`?format=png` is honoured alongside the `Accept` header, because
+`curl -o out.png '...&format=png'` is far easier to type and remember.
+
+**Rendered by the browser's own code.** PNG and WAV are produced by running the same
+JavaScript modules the browser runs, under Node. A PHP reimplementation of the
+renderers was the obvious alternative and the wrong one: two implementations of a
+generative algorithm drift, silently, somewhere nobody looks. The scripts doing this
+were written to *verify* the renderers (`scripts/render-preview.mjs`,
+`scripts/render-wav.mjs`); having them serve the renderers too costs nothing and
+guarantees an API response matches what the studio draws.
+
+Cold render is 50–500 ms, so everything is cached on a hash of exactly what gets
+drawn — not of the request, so query-string order does not fragment the cache. Audio
+is capped at 60 seconds; a longer score is truncated and says so rather than letting
+a request buy ten minutes of synthesis.
+
+**Asking for a format a generator cannot produce returns `406`, not a silent JSON
+fallback**, and names the ones it can:
+
+```json
+{
+  "error": "unsupported_format",
+  "message": "[words.passphrase] is a text generator and has no PNG representation.",
+  "available": ["application/json", "text/plain"]
+}
+```
+
+`/api/v1/generators` advertises the formats for each entry, so a client never has to
+discover this by failing.
 
 ```bash
 curl -s 'https://randomly.test/api/v1/g/numbers.integers?count=6&min=1&max=60&unique=1' \

@@ -6,10 +6,10 @@
 
 ### Randomness, sourced from reality.
 
-**32 generators.** Numbers, words, equations, patterns, images, sound.
+**40 generators.** Numbers, words, equations, patterns, images, sound.
 Every one seeded from the physical world. Every result ships with a receipt.
 
-`673 tests` · `10 entropy sources` · `0 API keys` · `no database`
+`890 tests` · `10 entropy sources` · `0 API keys` · `no database`
 
 </div>
 
@@ -63,6 +63,24 @@ because **the token *is* the seed**.
 <td><b>E(3,8)</b> — the Cuban tresillo, found by Bjorklund's algorithm</td>
 </tr>
 </table>
+
+Two of them are arguments rather than decoration:
+
+<table>
+<tr>
+<td width="50%"><img src="docs/media/poisson.png" alt="Two panels of dots: the left evenly spread, the right visibly clumped with touching pairs highlighted"></td>
+<td width="50%"><img src="docs/media/maze.png" alt="Three mazes side by side, each coloured by distance from the entrance, showing different structure"></td>
+</tr>
+<tr>
+<td><b>Blue noise vs uniform random</b> — same number of points. Poisson-disk on the left, <code>rand()</code> on the right. Measured: closest blue pair <b>18.002</b> against a minimum radius of 18; closest uniform pair <b>0.88</b>.</td>
+<td><b>Three maze algorithms</b> — DFS, Kruskal, Wilson's, coloured by distance from the entrance. All three are "random". Only Wilson's is a <i>provably uniform</i> spanning tree, and the difference is visible.</td>
+</tr>
+</table>
+
+And `numbers.coordinates` renders the classic sphere-sampling bug side by side.
+Above 60° of latitude lies 13.4% of the Earth. The correct sampler put **14.0%**
+of its points there; sampling latitude uniformly put **35.9%** — because it gives
+a coin-sized polar cap the same number of points as a belt around the equator.
 
 And the things that are not pictures:
 
@@ -203,6 +221,20 @@ GET  /api/v1/g/{key}?…         the one-liner shorthand
 GET  /api/v1/replay/{token}    recompute a past result exactly
 ```
 
+**Every generator is fully usable over HTTP.** A canvas generator returns a spec by
+design — that is what keeps the studio's sliders instant — but an API caller handed a
+*description* of an image has not been given an image:
+
+```bash
+curl -o noise.png '…/api/v1/g/patterns.perlin?variant=ridged&palette=viridis&format=png'
+curl -o beat.wav  '…/api/v1/g/audio.rhythm?format=wav'
+```
+
+Those are rendered by running **the same JavaScript the browser runs**, under Node.
+A PHP reimplementation would have been a second copy of a generative algorithm to
+keep in step, and it would have drifted silently. Asking for a format a generator
+cannot produce returns `406` naming the ones it can — never a quiet JSON fallback.
+
 The site's own pages call these same endpoints. There is no private path with
 different behaviour.
 
@@ -232,7 +264,7 @@ php artisan serve
 
 ```bash
 php artisan randomly:seed --source=drand      # draw one seed, see its receipt
-./vendor/bin/pest                             # 673 tests, no network, no database
+./vendor/bin/pest                             # 890 tests, no network, no database
 ```
 
 **Stack:** Laravel 13 · PHP 8.5 · Blade + Alpine 3 + Tailwind 4 · Vite · Pest.
@@ -285,5 +317,5 @@ of them could have.
 
 <div align="center">
 <br>
-<i>32 shipped · 31 specified · every one of them a class and a line of config away.</i>
+<i>40 shipped · 23 specified · every one of them a class and a line of config away.</i>
 </div>

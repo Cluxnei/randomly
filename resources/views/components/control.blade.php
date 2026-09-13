@@ -33,7 +33,7 @@
                    @if ($param->max !== null) max="{{ $param->max + 0 }}" @endif
                    step="{{ $step + 0 }}"
                    value="{{ $current }}"
-                   class="w-24 border border-line bg-surface/60 px-2 py-1 text-right font-mono text-xs text-signal num
+                   class="tap w-24 border border-line bg-surface/60 px-2 py-1.5 text-right font-mono text-xs text-signal num
                           focus:border-signal focus:outline-none">
         @endif
     </div>
@@ -66,7 +66,7 @@
                     :aria-checked="{{ $model }} ? 'true' : 'false'"
                     aria-checked="{{ $current ? 'true' : 'false' }}"
                     :class="{{ $model }} ? 'border-signal' : 'border-line'"
-                    class="group flex w-full items-center justify-between gap-3 border px-3 py-2 text-left transition-colors">
+                    class="tap group flex w-full items-center justify-between gap-3 border px-3 py-2 text-left transition-colors">
                 <span class="font-mono text-xs text-muted num"
                       x-text="{{ $model }} ? 'on' : 'off'">{{ $current ? 'on' : 'off' }}</span>
                 <span class="relative block h-4 w-8 shrink-0 border transition-colors"
@@ -87,7 +87,7 @@
                         :aria-pressed="String({{ $model }}) === '{{ $optionValue }}' ? 'true' : 'false'"
                         aria-pressed="{{ (string) $current === (string) $optionValue ? 'true' : 'false' }}"
                         :class="String({{ $model }}) === '{{ $optionValue }}' ? 'bg-surface text-signal' : 'bg-ground text-muted hover:text-text'"
-                        class="flex-1 whitespace-nowrap px-3 py-2 text-xs transition-colors
+                        class="tap flex flex-1 items-center justify-center px-3 py-2.5 text-center text-xs leading-snug transition-colors
                                {{ (string) $current === (string) $optionValue ? 'bg-surface text-signal' : 'bg-ground text-muted' }}">
                     {{ $optionLabel }}
                 </button>
@@ -103,7 +103,7 @@
                @if ($param->max !== null) maxlength="{{ (int) $param->max }}" @endif
                value="{{ $current }}"
                autocomplete="off" spellcheck="false"
-               class="mt-3 w-full border border-line bg-surface/60 px-3 py-2 font-mono text-sm text-text
+               class="tap mt-3 w-full border border-line bg-surface/60 px-3 py-2.5 font-mono text-sm text-text
                       focus:border-signal focus:outline-none">
     @endif
 

@@ -80,7 +80,7 @@
                 'hay' => Str::lower($i['name'].' '.$i['key'].' '.$i['tagline']),
             ]))->values()),
          }"
-         @keydown.window.slash="if (document.activeElement !== $refs.search) { $event.preventDefault(); $refs.search.focus(); }">
+         @keydown.window.slash="if (! ['input', 'textarea', 'select'].includes((document.activeElement?.tagName ?? '').toLowerCase())) { $event.preventDefault(); $refs.search.focus(); }">
 
         <section class="border-b border-line">
             <div class="mx-auto max-w-7xl px-6 pb-10 pt-16">
@@ -110,20 +110,20 @@
                         <label for="library-search" class="sr-only">Search generators</label>
                         <input id="library-search" type="search" x-model="q" x-ref="search"
                                placeholder="Search generators" autocomplete="off"
-                               class="w-full border border-line bg-surface/50 px-3 py-2 pr-12 text-sm text-text placeholder:text-muted focus:border-signal focus:outline-none">
+                               class="tap w-full border border-line bg-surface/50 px-3 py-2.5 pr-12 text-sm text-text placeholder:text-muted focus:border-signal focus:outline-none">
                         <kbd class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 border border-line px-1.5 py-0.5 font-mono text-[0.65rem] text-muted">/</kbd>
                     </div>
 
-                    <div class="flex flex-wrap gap-1" role="group" aria-label="Filter by module">
+                    <div class="flex flex-wrap gap-1.5" role="group" aria-label="Filter by module">
                         <button type="button" @click="module = 'all'"
                                 :class="module === 'all' ? 'border-signal text-signal' : 'border-line text-muted hover:text-text'"
-                                class="border px-3 py-1.5 text-xs uppercase tracking-[0.12em] transition-colors">
+                                class="tap inline-flex items-center border px-3 py-2 text-xs uppercase tracking-[0.12em] transition-colors">
                             All
                         </button>
                         @foreach ($modules as $moduleCase)
                             <button type="button" @click="module = '{{ $moduleCase->value }}'"
                                     :class="module === '{{ $moduleCase->value }}' ? 'border-signal text-signal' : 'border-line text-muted hover:text-text'"
-                                    class="border px-3 py-1.5 text-xs uppercase tracking-[0.12em] transition-colors">
+                                    class="tap inline-flex items-center border px-3 py-2 text-xs uppercase tracking-[0.12em] transition-colors">
                                 {{ $moduleCase->label() }}
                             </button>
                         @endforeach
@@ -144,7 +144,7 @@
             <ul class="mt-5 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($live as $generator)
                     @php [$m, $g] = explode('.', $generator['key'], 2); @endphp
-                    <li x-show="matches('{{ $generator['module'] }}', @js($generator['hay']))" class="bg-ground">
+                    <li x-show="matches('{{ $generator['module'] }}', @js($generator['hay']))" class="min-w-0 bg-ground">
                         <a href="{{ route('studio', ['module' => $m, 'generator' => $g]) }}"
                            class="group flex h-full flex-col transition-colors hover:bg-surface/60">
                             @if ($generator['preview'])
@@ -163,7 +163,7 @@
                                 </div>
                             @endif
 
-                        <div class="flex flex-1 flex-col gap-3 p-5">
+                        <div class="flex min-w-0 flex-1 flex-col gap-3 p-5">
                             <div class="flex items-start justify-between gap-3">
                                 <h3 class="text-base font-medium tracking-tight">{{ $generator['name'] }}</h3>
                                 <span class="shrink-0 border border-line px-1.5 py-0.5 text-[0.62rem] uppercase tracking-[0.12em] text-muted">
@@ -216,7 +216,7 @@
                 @foreach ($roadmap as $moduleKey => $items)
                     @foreach ($items as $item)
                         <li x-show="matches('{{ $moduleKey }}', @js(Str::lower($item['name'].' '.$item['key'].' '.$item['tagline'])))"
-                            class="flex flex-col gap-2 bg-ground p-4 opacity-55">
+                            class="flex min-w-0 flex-col gap-2 bg-ground p-4 opacity-55">
                             <div class="flex items-start justify-between gap-2">
                                 <h3 class="text-sm font-medium tracking-tight">{{ $item['name'] }}</h3>
                                 <span class="shrink-0 border border-line px-1.5 py-0.5 font-mono text-[0.58rem] uppercase tracking-[0.1em] text-muted">

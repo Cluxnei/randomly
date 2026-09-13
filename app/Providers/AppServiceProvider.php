@@ -8,6 +8,7 @@ use App\Random\Entropy\Contracts\EntropySource;
 use App\Random\Entropy\EntropyPool;
 use App\Random\GeneratorRegistry;
 use App\Random\Generators\Contracts\Generator;
+use App\Random\Media\MediaRenderer;
 use App\Random\Og\OgImage;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
@@ -39,6 +40,15 @@ class AppServiceProvider extends ServiceProvider
 
             return new EntropyPool($sources);
         });
+
+        /*
+         * One renderer, so the cache directory and the project root are settled in
+         * a single place rather than guessed at each call site.
+         */
+        $this->app->singleton(MediaRenderer::class, fn (): MediaRenderer => new MediaRenderer(
+            cacheDirectory: storage_path('app/media'),
+            projectRoot: base_path(),
+        ));
 
         /*
          * The registry is immutable once built and every page reads it, so building

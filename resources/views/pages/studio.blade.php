@@ -38,7 +38,14 @@
               $key === 'entropy_out_bits' => number_format((float) $value, 1).' bits',
               $key === 'alphabet_size' => number_format((float) $value).' chars',
               is_int($value) || is_float($value) => number_format((float) $value, is_float($value) && floor($value) != $value ? 2 : 0),
-              is_array($value) => implode(' ', $value),
+              // A flat array joins; a nested one is summarised rather than
+              // imploded. implode() on nested data raises "Array to string
+              // conversion" and takes the whole studio page down with a 500 —
+              // which is exactly what patterns.maze did by reporting per-algorithm
+              // statistics. A generator should not be able to break the page by
+              // describing itself thoroughly.
+              is_array($value) && array_is_list($value) && ! array_filter($value, 'is_array') => implode(' ', $value),
+              is_array($value) => json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
               default => (string) $value,
           };
 
@@ -109,10 +116,10 @@
     <div x-data="studio(@js($config))" @keydown.window="shortcut($event)">
 
         <div class="border-b border-line">
-            <div class="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-4 px-6 pb-6 pt-10">
+            <div class="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-x-4 gap-y-3 px-5 pb-6 pt-8 sm:px-6 sm:pt-10">
                 <div>
                     <p class="flex items-center gap-2 font-mono text-[0.68rem] uppercase tracking-[0.18em] text-muted">
-                        <a href="{{ route('library') }}" class="hover:text-text">Library</a>
+                        <a href="{{ route('library') }}" class="tap inline-flex items-center hover:text-text">Library</a>
                         <span aria-hidden="true">/</span>
                         <span>{{ $generator->module()->label() }}</span>
                     </p>
@@ -120,30 +127,42 @@
                     <p class="mt-3 max-w-xl text-muted">{{ $generator->tagline() }}</p>
                 </div>
 
-                <p class="font-mono text-xs text-muted num">
+                <p class="min-w-0 break-words font-mono text-xs text-muted num">
                     {{ $generator->key() }} · v{{ $generator->version() }} · renderer {{ $generator->renderer()->value }}
                 </p>
             </div>
         </div>
 
+        {{-- Three grid items, not two.
+             On a phone this is one column and DOM order is reading order: the
+             result leads, the controls follow it, and the instrumentation and the
+             receipt come last — so Generate is one short scroll away rather than
+             on the far side of a wall of sliders. On a large screen explicit
+             placement puts them back where docs/10 §3 draws them: result above
+             receipt in the left column, controls in a sticky right-hand rail. --}}
         <div class="mx-auto grid max-w-7xl gap-px border-line bg-line lg:grid-cols-[minmax(0,1fr)_22rem] lg:border-x">
 
             {{-- ── Result, dominant ─────────────────────────────────────────── --}}
-            <div class="bg-ground">
-                <section aria-labelledby="result-heading" class="relative border-b border-line">
+            <div class="min-w-0 bg-ground lg:col-start-1 lg:row-start-1">
+                <section aria-labelledby="result-heading" class="relative">
                     <h2 id="result-heading" class="sr-only">Result</h2>
 
                     <div x-show="replayed" x-cloak
-                         class="flex items-center gap-2 border-b border-line bg-surface/50 px-6 py-2 font-mono text-[0.68rem] text-muted"
+                         class="flex items-center gap-2 border-b border-line bg-surface/50 px-5 py-2 font-mono text-[0.68rem] leading-relaxed text-muted sm:px-6"
                          @if (! $generation->replayed) style="display: none" @endif>
                         Replayed from a permalink — this is the original randomness, recomputed.
                     </div>
 
-                    <div class="flex min-h-[18rem] items-center justify-center px-6 py-14 sm:min-h-[22rem]">
+                    <div class="flex min-h-[16rem] items-center justify-center px-4 py-10 sm:min-h-[22rem] sm:px-6 sm:py-14">
                         @switch ($generator->renderer())
                             @case (Renderer::Text)
+                                {{-- A sixty-word passphrase and a row of twenty integers are
+                                     both one long line. They wrap rather than scroll: a result
+                                     you have to drag sideways to read is not a result you can
+                                     read at a glance, and `[overflow-wrap:anywhere]` only
+                                     breaks a token when there is nowhere else to break. --}}
                                 <pre x-ref="result" x-text="display"
-                                     class="animate-rise max-w-full overflow-x-auto text-center font-mono text-2xl leading-relaxed text-text num sm:text-4xl"
+                                     class="animate-rise min-w-0 max-w-full whitespace-pre-wrap text-center font-mono text-xl leading-relaxed text-text num [overflow-wrap:anywhere] sm:text-3xl lg:text-4xl"
                                 >{{ $generation->result->display }}</pre>
                                 @break
 
@@ -153,7 +172,7 @@
                                      The backing store is the spec's own pixel size and CSS does
                                      the fitting, which is why an export is full resolution
                                      however small the canvas is on screen. --}}
-                                <div class="w-full" data-canvas-stage>
+                                <div class="w-full min-w-0" data-canvas-stage>
                                     <div class="relative mx-auto w-fit max-w-full">
                                         <canvas x-ref="canvas"
                                                 width="{{ $generation->result->value['width'] }}"
@@ -216,7 +235,7 @@
                                      never by a Web Audio node graph. Web Audio only plays the
                                      finished buffer. Nothing ever autoplays: docs/09 §9, and
                                      the browser would refuse anyway. --}}
-                                <div class="w-full" data-audio-stage>
+                                <div class="w-full min-w-0" data-audio-stage>
                                     <div class="relative mx-auto w-full max-w-3xl">
                                         <canvas x-ref="waveform"
                                                 role="img"
@@ -243,7 +262,7 @@
 
                                     <div class="mx-auto mt-4 flex w-full max-w-3xl items-center gap-4">
                                         <button type="button" @click="togglePlay()" :disabled="drawing || audio === null"
-                                                class="flex items-center gap-2 border border-line px-4 py-2 font-mono text-xs text-text transition-colors hover:border-signal hover:text-signal disabled:opacity-50">
+                                                class="flex min-h-12 shrink-0 items-center gap-2 border border-line px-5 py-2 font-mono text-xs text-text transition-colors hover:border-signal hover:text-signal disabled:opacity-50">
                                             <span aria-hidden="true" x-text="playing ? '■' : '▶'">▶</span>
                                             <span x-text="playing ? 'Stop' : 'Play'">Play</span>
                                         </button>
@@ -303,12 +322,12 @@
                                      rather than fetched on reveal: half of these generators
                                      are questions, and one of them is a guessing game that
                                      is over the moment the answer is on screen. --}}
-                                <div x-data="mathResult()" x-effect="render(meta)" class="w-full">
+                                <div x-data="mathResult()" x-effect="render(meta)" class="w-full min-w-0">
                                     <div x-ref="problems" class="mx-auto max-w-2xl"></div>
 
                                     <div class="mt-6 flex justify-center">
                                         <button type="button" @click="toggle()" x-show="rows > 0" x-cloak
-                                                class="border border-line px-3 py-1.5 font-mono text-[0.68rem] text-muted transition-colors hover:border-signal hover:text-signal">
+                                                class="tap inline-flex items-center border border-line px-4 py-2 font-mono text-[0.68rem] text-muted transition-colors hover:border-signal hover:text-signal">
                                             <span x-text="revealed ? 'Hide answers' : 'Show answers'">Show answers</span>
                                         </button>
                                     </div>
@@ -325,21 +344,213 @@
                             @default
                                 {{-- SLOT: chart and gallery renderers. --}}
                                 <pre x-ref="result" x-text="display"
-                                     class="animate-rise max-w-full overflow-x-auto text-center font-mono text-xl text-text num"
+                                     class="animate-rise min-w-0 max-w-full whitespace-pre-wrap text-center font-mono text-lg text-text num [overflow-wrap:anywhere] sm:text-xl"
                                 >{{ $generation->result->display }}</pre>
                         @endswitch
                     </div>
 
                     <p x-show="error" x-cloak x-text="error" style="display: none"
                        role="alert"
-                       class="border-t border-line bg-warn/10 px-6 py-3 font-mono text-xs text-warn"></p>
+                       class="border-t border-line bg-warn/10 px-5 py-3 font-mono text-xs leading-relaxed text-warn sm:px-6"></p>
 
                     <div x-show="busy" x-cloak style="display: none"
                          class="pointer-events-none absolute inset-x-0 bottom-0 h-px overflow-hidden bg-line" aria-hidden="true">
                         <span class="animate-sweep block h-px w-1/3 bg-signal"></span>
                     </div>
                 </section>
+            </div>
 
+            {{-- ── Controls ─────────────────────────────────────────────────── --}}
+            <aside class="min-w-0 bg-ground lg:col-start-2 lg:row-start-1 lg:row-span-2" aria-label="Controls">
+                <div class="lg:sticky lg:top-20">
+                    <h2 class="border-b border-line px-5 py-3 font-mono text-[0.68rem] uppercase tracking-[0.18em] text-muted">
+                        Controls
+                        <span class="ml-1 text-line">·</span>
+                        <span class="text-muted">from schema()</span>
+                    </h2>
+
+                    <div class="divide-y divide-line border-b border-line">
+                        {{-- Every control below is rendered from the generator's own
+                             declared parameters. No generator writes UI. --}}
+                        @foreach ($generator->schema()->params() as $param)
+                            <x-control :param="$param" :value="$params[$param->name] ?? null" />
+                        @endforeach
+                    </div>
+
+                    <div class="border-b border-line px-5 py-4">
+                        <label for="source" class="text-sm text-text">Entropy source</label>
+                        <select id="source" x-model="source" @change="generate()"
+                                class="tap mt-3 w-full border border-line bg-surface/60 px-3 py-2.5 font-mono text-xs text-text focus:border-signal focus:outline-none">
+                            <option value="auto" @selected($selectedSource === 'auto')>auto · rotate the healthy ones</option>
+                            @foreach ($sources as $source)
+                                <option value="{{ $source['key'] }}"
+                                        @selected($selectedSource === $source['key'])
+                                        @disabled($source['status'] !== 'up')>
+                                    {{ $source['label'] }} · class {{ $source['class'] }}{{ $source['status'] !== 'up' ? ' · down' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="mt-2 text-xs leading-relaxed text-muted">
+                            Picking a source changes the story on the receipt, never the quality:
+                            anything below class A is mixed with the OS CSPRNG before it reaches you.
+                            This result actually came from
+                            <span class="font-mono text-[0.7rem] text-text" x-text="receipt.source_label">{{ $receipt->sourceLabel }}</span>.
+                        </p>
+                    </div>
+
+                    <div class="px-5 py-5">
+                        {{-- Two buttons, because they do genuinely different things. That
+                             difference is the seed concept, taught without a paragraph.
+
+                             Below `lg` the same pair lives in the bar pinned to the bottom
+                             of the viewport, so they are hidden here rather than rendered
+                             twice — one Generate on screen, wherever you have scrolled to. --}}
+                        <div class="hidden lg:block">
+                        <button type="button" @click="generate()" :disabled="busy"
+                                class="flex w-full items-center justify-between gap-3 bg-signal px-4 py-3 text-left text-sm font-medium text-ground transition-opacity hover:opacity-90 disabled:opacity-50">
+                            <span>
+                                Generate
+                                <span class="mt-0.5 block font-mono text-[0.65rem] font-normal opacity-70">new entropy · new receipt</span>
+                            </span>
+                            <kbd class="border border-ground/30 px-1.5 py-0.5 font-mono text-[0.62rem]">Space</kbd>
+                        </button>
+
+                        @unless ($generator->isSensitive())
+                            <button type="button" @click="rerender()" :disabled="busy"
+                                    class="mt-2 flex w-full items-center justify-between gap-3 border border-line px-4 py-3 text-left text-sm text-text transition-colors hover:border-signal disabled:opacity-50">
+                                <span>
+                                    Re-render
+                                    <span class="mt-0.5 block font-mono text-[0.65rem] text-muted">same seed · new parameters</span>
+                                </span>
+                                <span x-show="dirty" x-cloak class="size-1.5 shrink-0 rounded-full bg-signal" aria-hidden="true"></span>
+                            </button>
+                        @endunless
+                        </div>
+
+                        {{-- Outside the desktop-only block: this paragraph is the reason
+                             there is no second button, and it has to be readable on the
+                             screen sizes where the second button is in the bottom bar. --}}
+                        @if ($generator->isSensitive())
+                            <p class="border border-line px-4 py-3 text-xs leading-relaxed text-muted lg:mt-3">
+                                There is no same-seed re-render here. Recomputing a secret from a kept
+                                seed is exactly the thing this generator refuses to make possible, so
+                                every change of parameters draws fresh entropy.
+                            </p>
+                        @endif
+
+                        <div class="mt-4 flex items-center justify-between gap-3 font-mono text-[0.65rem] text-muted">
+                            <span>seed token</span>
+                            @if ($generator->isSensitive())
+                                <span class="text-muted">withheld</span>
+                            @else
+                                <span class="text-text num" x-text="token">{{ $generation->seed->token() }}</span>
+                            @endif
+                        </div>
+
+                        <p class="mt-2 font-mono text-[0.62rem] leading-relaxed text-muted">
+                            @if ($generator->isSensitive())
+                                Nothing to keep: no token is issued for a generator that makes secrets.
+                            @else
+                                Re-render keeps this token. Generate replaces it. That is the whole idea.
+                            @endif
+                        </p>
+
+                        <button type="button" @click="copy()"
+                                class="tap mt-4 flex w-full items-center justify-between gap-3 border border-line px-4 py-2.5 text-left text-xs text-text transition-colors hover:border-signal hover:text-signal">
+                            <span x-text="copied ? 'Copied to clipboard' : 'Copy result'">Copy result</span>
+                            <kbd class="border border-line px-1.5 py-0.5 font-mono text-[0.62rem] text-muted">C</kbd>
+                        </button>
+
+                        @if ($generator->renderer() === Renderer::Canvas)
+                            <button type="button" @click="downloadPng()" :disabled="drawing || rendered === null"
+                                    class="tap mt-2 flex w-full items-center justify-between gap-3 border border-line px-4 py-2.5 text-left text-xs text-text transition-colors hover:border-signal hover:text-signal disabled:opacity-50">
+                                <span>
+                                    Download PNG
+                                    <span class="mt-0.5 block font-mono text-[0.62rem] text-muted num" x-text="dimensions"></span>
+                                </span>
+                                <span x-show="exported" x-cloak class="shrink-0 font-mono text-[0.62rem] text-signal num" x-text="exported"></span>
+                            </button>
+
+                            <p class="mt-2 font-mono text-[0.62rem] leading-relaxed text-muted">
+                                Burned into the corner before the file is written, so the image keeps
+                                its provenance wherever it ends up:
+                            </p>
+                            <p class="mt-1.5 break-all border-l border-line pl-2 font-mono text-[0.6rem] leading-relaxed text-text"
+                               x-text="receiptLine"></p>
+                        @endif
+
+                        @if ($generator->renderer() === Renderer::Math)
+                            {{-- The worksheet is the seed architecture's most useful
+                                 by-product: the link carries this token, so the printed
+                                 sheet regenerates byte for byte, and changing one
+                                 character of the token hands the next student a
+                                 different sheet with the same shape. --}}
+                            <a href="{{ route('worksheet', ['generator' => \Illuminate\Support\Str::after($generator->key(), '.')]) }}?{{ http_build_query([...$params, 'seed' => $generation->seed->token(), 'count' => 20]) }}"
+                               target="_blank" rel="noopener"
+                               class="tap mt-2 flex w-full items-center justify-between gap-3 border border-line px-4 py-2.5 text-left text-xs text-text transition-colors hover:border-signal hover:text-signal">
+                                <span>
+                                    Printable worksheet
+                                    <span class="mt-0.5 block font-mono text-[0.62rem] text-muted num">20 problems · answers on page 2</span>
+                                </span>
+                                <span aria-hidden="true" class="shrink-0 font-mono text-[0.62rem] text-muted">↗</span>
+                            </a>
+
+                            <p class="mt-2 font-mono text-[0.62rem] leading-relaxed text-muted">
+                                The seed is printed in the footer, so the same sheet comes back
+                                from the same link — and a different seed is a different sheet.
+                            </p>
+                        @endif
+
+                        @if ($generator->renderer() === Renderer::Audio)
+                            <button type="button" @click="downloadWav()" :disabled="drawing || audio === null"
+                                    class="tap mt-2 flex w-full items-center justify-between gap-3 border border-line px-4 py-2.5 text-left text-xs text-text transition-colors hover:border-signal hover:text-signal disabled:opacity-50">
+                                <span>
+                                    Download WAV
+                                    <span class="mt-0.5 block font-mono text-[0.62rem] text-muted num">16-bit PCM · <span x-text="total">0:00</span></span>
+                                </span>
+                                <span x-show="exported" x-cloak class="shrink-0 font-mono text-[0.62rem] text-signal num" x-text="exported"></span>
+                            </button>
+
+                            <p class="mt-2 font-mono text-[0.62rem] leading-relaxed text-muted">
+                                The file is the render, sample for sample — not a second performance
+                                of it. The seed below reproduces it anywhere.
+                            </p>
+
+                            {{-- A volume control is on screen at all times, and so is a hard
+                                 mute: docs/09 §9. This is the monitor level and it never
+                                 touches the file — the mix level that *is* written into the
+                                 WAV is the Volume control in the parameters panel, which
+                                 starts 12 dB below full scale. --}}
+                            <div class="mt-4 border-t border-line pt-4">
+                                <div class="flex items-center justify-between gap-3 font-mono text-[0.65rem] text-muted">
+                                    <label for="monitor-volume">monitor</label>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-signal num" x-text="`${Math.round(monitor * 100)}%`">80%</span>
+                                        <button type="button" @click="toggleMute()"
+                                                :class="muted ? 'border-warn/50 text-warn' : 'border-line text-muted'"
+                                                class="tap inline-flex items-center border px-3 py-1 transition-colors hover:border-signal hover:text-signal">
+                                            <span x-text="muted ? 'muted' : 'mute'">mute</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <input id="monitor-volume" type="range" min="0" max="1" step="0.01"
+                                       x-model.number="monitor"
+                                       @input="setMonitor($event.target.value)"
+                                       class="mt-3 w-full">
+                            </div>
+                        @endif
+
+                    </div>
+                </div>
+            </aside>
+
+            {{-- ── Instrumentation and receipt ───────────────────────────────
+                 Below the result on a wide screen, below the controls on a phone.
+                 Both readings are true to the spec: the receipt belongs under the
+                 thing it vouches for, and on a 360px screen the thing a visitor
+                 came to press should not be nine screens down. --}}
+            <div class="min-w-0 bg-ground lg:col-start-1 lg:row-start-2">
                 {{-- ── Meta strip: the instrumentation is the decoration ─────── --}}
                 <section aria-labelledby="meta-heading" class="border-b border-line">
                     <h2 id="meta-heading" class="sr-only">Measurements</h2>
@@ -347,7 +558,7 @@
                     {{-- The page is complete without JavaScript; Alpine takes the strip
                          over the moment it boots, so only one of these ever renders. --}}
                     <noscript>
-                    <dl class="flex flex-wrap gap-x-8 gap-y-2 px-6 py-3 font-mono text-[0.7rem]">
+                    <dl class="flex flex-wrap gap-x-5 gap-y-2 px-5 py-3 font-mono text-[0.7rem] sm:gap-x-8">
                         @foreach ($metaRows as $row)
                             <div class="flex gap-2">
                                 <dt class="text-muted">{{ $row['label'] }}</dt>
@@ -365,7 +576,7 @@
                     </dl>
                     </noscript>
 
-                    <dl class="flex flex-wrap gap-x-8 gap-y-2 px-6 py-3 font-mono text-[0.7rem]">
+                    <dl class="flex flex-wrap gap-x-5 gap-y-2 px-5 py-3 font-mono text-[0.7rem] sm:gap-x-8 sm:px-6">
                         <template x-for="row in metaRows" :key="row.key">
                             <div class="flex gap-2">
                                 <dt class="text-muted" x-text="row.label"></dt>
@@ -381,7 +592,7 @@
                 </section>
 
                 {{-- ── Receipt ──────────────────────────────────────────────── --}}
-                <section aria-labelledby="receipt-heading" class="px-6 py-7">
+                <section aria-labelledby="receipt-heading" class="px-5 py-6 sm:px-6 sm:py-7">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <h2 id="receipt-heading" class="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-muted">
                             Seed receipt
@@ -413,20 +624,20 @@
                        @if ($receipt->class->caveat() === null) style="display: none" @endif>{{ $receipt->class->caveat() }}</p>
 
                     <dl class="mt-6 grid gap-px border border-line bg-line font-mono text-xs sm:grid-cols-2">
-                        <div class="flex gap-3 bg-ground px-4 py-2.5">
-                            <dt class="w-24 shrink-0 text-muted">source</dt>
-                            <dd class="text-text" x-text="receipt.source_label">{{ $receipt->sourceLabel }}</dd>
+                        <div class="flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 bg-ground px-4 py-2.5">
+                            <dt class="w-20 shrink-0 text-muted sm:w-24">source</dt>
+                            <dd class="min-w-0 break-words text-text" x-text="receipt.source_label">{{ $receipt->sourceLabel }}</dd>
                         </div>
-                        <div class="flex gap-3 bg-ground px-4 py-2.5">
-                            <dt class="w-24 shrink-0 text-muted">observed</dt>
-                            <dd class="text-text num" x-text="receipt.observed_at">{{ $receipt->observedAt->format(DATE_ATOM) }}</dd>
+                        <div class="flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 bg-ground px-4 py-2.5">
+                            <dt class="w-20 shrink-0 text-muted sm:w-24">observed</dt>
+                            <dd class="min-w-0 break-all text-text num" x-text="receipt.observed_at">{{ $receipt->observedAt->format(DATE_ATOM) }}</dd>
                         </div>
-                        <div class="flex gap-3 bg-ground px-4 py-2.5">
-                            <dt class="w-24 shrink-0 text-muted">latency</dt>
+                        <div class="flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 bg-ground px-4 py-2.5">
+                            <dt class="w-20 shrink-0 text-muted sm:w-24">latency</dt>
                             <dd class="text-text num"><span x-text="receipt.latency_ms">{{ $receipt->latencyMs }}</span>ms</dd>
                         </div>
-                        <div class="flex gap-3 bg-ground px-4 py-2.5">
-                            <dt class="w-24 shrink-0 text-muted">mixed with</dt>
+                        <div class="flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 bg-ground px-4 py-2.5">
+                            <dt class="w-20 shrink-0 text-muted sm:w-24">mixed with</dt>
                             <dd class="text-text"
                                 x-text="receipt.mixed_with_csprng ? 'csprng — always' : 'nothing — this source stands alone'"
                             >{{ $receipt->mixedWithCsprng ? 'csprng — always' : 'nothing — this source stands alone' }}</dd>
@@ -438,8 +649,8 @@
                            target="_blank" rel="noopener noreferrer"
                            href="{{ $receipt->proofUrl }}"
                            @if ($receipt->proofUrl === null) style="display: none" @endif
-                           class="font-mono text-xs text-signal hover:underline">
-                            <span x-text="receipt.proof_url">{{ $receipt->proofUrl }}</span> ↗
+                           class="inline-flex min-h-11 items-center break-all font-mono text-xs text-signal hover:underline">
+                            <span x-text="receipt.proof_url">{{ $receipt->proofUrl }}</span>&nbsp;↗
                         </a>
                         <span x-show="! receipt.proof_url" x-cloak class="font-mono text-xs text-muted"
                               @if ($receipt->proofUrl !== null) style="display: none" @endif>
@@ -472,9 +683,9 @@
                                 <input type="text" readonly
                                        aria-label="Permalink"
                                        :value="permalink" value="{{ $permalink }}"
-                                       class="min-w-0 flex-1 border border-line bg-surface/50 px-3 py-2 font-mono text-xs text-text focus:border-signal focus:outline-none">
+                                       class="tap min-w-0 flex-1 basis-48 border border-line bg-surface/50 px-3 py-2.5 font-mono text-xs text-text focus:border-signal focus:outline-none">
                                 <button type="button" @click="copy(permalink)"
-                                        class="border border-line px-4 py-2 font-mono text-xs text-text transition-colors hover:border-signal hover:text-signal">
+                                        class="tap border border-line px-4 py-2.5 font-mono text-xs text-text transition-colors hover:border-signal hover:text-signal">
                                     <span x-show="! copied">Copy link</span>
                                     <span x-show="copied" x-cloak class="text-signal">Copied</span>
                                 </button>
@@ -483,180 +694,6 @@
                     </div>
                 </section>
             </div>
-
-            {{-- ── Controls ─────────────────────────────────────────────────── --}}
-            <aside class="bg-ground" aria-label="Controls">
-                <div class="lg:sticky lg:top-20">
-                    <h2 class="border-b border-line px-5 py-3 font-mono text-[0.68rem] uppercase tracking-[0.18em] text-muted">
-                        Controls
-                        <span class="ml-1 text-line">·</span>
-                        <span class="text-muted">from schema()</span>
-                    </h2>
-
-                    <div class="divide-y divide-line border-b border-line">
-                        {{-- Every control below is rendered from the generator's own
-                             declared parameters. No generator writes UI. --}}
-                        @foreach ($generator->schema()->params() as $param)
-                            <x-control :param="$param" :value="$params[$param->name] ?? null" />
-                        @endforeach
-                    </div>
-
-                    <div class="border-b border-line px-5 py-4">
-                        <label for="source" class="text-sm text-text">Entropy source</label>
-                        <select id="source" x-model="source" @change="generate()"
-                                class="mt-3 w-full border border-line bg-surface/60 px-3 py-2 font-mono text-xs text-text focus:border-signal focus:outline-none">
-                            <option value="auto" @selected($selectedSource === 'auto')>auto · rotate the healthy ones</option>
-                            @foreach ($sources as $source)
-                                <option value="{{ $source['key'] }}"
-                                        @selected($selectedSource === $source['key'])
-                                        @disabled($source['status'] !== 'up')>
-                                    {{ $source['label'] }} · class {{ $source['class'] }}{{ $source['status'] !== 'up' ? ' · down' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <p class="mt-2 text-xs leading-relaxed text-muted">
-                            Picking a source changes the story on the receipt, never the quality:
-                            anything below class A is mixed with the OS CSPRNG before it reaches you.
-                            This result actually came from
-                            <span class="font-mono text-[0.7rem] text-text" x-text="receipt.source_label">{{ $receipt->sourceLabel }}</span>.
-                        </p>
-                    </div>
-
-                    <div class="px-5 py-5">
-                        {{-- Two buttons, because they do genuinely different things. That
-                             difference is the seed concept, taught without a paragraph. --}}
-                        <button type="button" @click="generate()" :disabled="busy"
-                                class="flex w-full items-center justify-between gap-3 bg-signal px-4 py-3 text-left text-sm font-medium text-ground transition-opacity hover:opacity-90 disabled:opacity-50">
-                            <span>
-                                Generate
-                                <span class="mt-0.5 block font-mono text-[0.65rem] font-normal opacity-70">new entropy · new receipt</span>
-                            </span>
-                            <kbd class="border border-ground/30 px-1.5 py-0.5 font-mono text-[0.62rem]">Space</kbd>
-                        </button>
-
-                        @if ($generator->isSensitive())
-                            <p class="mt-3 border border-line px-4 py-3 text-xs leading-relaxed text-muted">
-                                There is no same-seed re-render here. Recomputing a secret from a kept
-                                seed is exactly the thing this generator refuses to make possible, so
-                                every change of parameters draws fresh entropy.
-                            </p>
-                        @else
-                            <button type="button" @click="rerender()" :disabled="busy"
-                                    class="mt-2 flex w-full items-center justify-between gap-3 border border-line px-4 py-3 text-left text-sm text-text transition-colors hover:border-signal disabled:opacity-50">
-                                <span>
-                                    Re-render
-                                    <span class="mt-0.5 block font-mono text-[0.65rem] text-muted">same seed · new parameters</span>
-                                </span>
-                                <span x-show="dirty" x-cloak class="size-1.5 shrink-0 rounded-full bg-signal" aria-hidden="true"></span>
-                            </button>
-                        @endif
-
-                        <div class="mt-4 flex items-center justify-between gap-3 font-mono text-[0.65rem] text-muted">
-                            <span>seed token</span>
-                            @if ($generator->isSensitive())
-                                <span class="text-muted">withheld</span>
-                            @else
-                                <span class="text-text num" x-text="token">{{ $generation->seed->token() }}</span>
-                            @endif
-                        </div>
-
-                        <p class="mt-2 font-mono text-[0.62rem] leading-relaxed text-muted">
-                            @if ($generator->isSensitive())
-                                Nothing to keep: no token is issued for a generator that makes secrets.
-                            @else
-                                Re-render keeps this token. Generate replaces it. That is the whole idea.
-                            @endif
-                        </p>
-
-                        <button type="button" @click="copy()"
-                                class="mt-4 flex w-full items-center justify-between gap-3 border border-line px-4 py-2.5 text-left text-xs text-text transition-colors hover:border-signal hover:text-signal">
-                            <span x-text="copied ? 'Copied to clipboard' : 'Copy result'">Copy result</span>
-                            <kbd class="border border-line px-1.5 py-0.5 font-mono text-[0.62rem] text-muted">C</kbd>
-                        </button>
-
-                        @if ($generator->renderer() === Renderer::Canvas)
-                            <button type="button" @click="downloadPng()" :disabled="drawing || rendered === null"
-                                    class="mt-2 flex w-full items-center justify-between gap-3 border border-line px-4 py-2.5 text-left text-xs text-text transition-colors hover:border-signal hover:text-signal disabled:opacity-50">
-                                <span>
-                                    Download PNG
-                                    <span class="mt-0.5 block font-mono text-[0.62rem] text-muted num" x-text="dimensions"></span>
-                                </span>
-                                <span x-show="exported" x-cloak class="shrink-0 font-mono text-[0.62rem] text-signal num" x-text="exported"></span>
-                            </button>
-
-                            <p class="mt-2 font-mono text-[0.62rem] leading-relaxed text-muted">
-                                Burned into the corner before the file is written, so the image keeps
-                                its provenance wherever it ends up:
-                            </p>
-                            <p class="mt-1.5 break-all border-l border-line pl-2 font-mono text-[0.6rem] leading-relaxed text-text"
-                               x-text="receiptLine"></p>
-                        @endif
-
-                        @if ($generator->renderer() === Renderer::Math)
-                            {{-- The worksheet is the seed architecture's most useful
-                                 by-product: the link carries this token, so the printed
-                                 sheet regenerates byte for byte, and changing one
-                                 character of the token hands the next student a
-                                 different sheet with the same shape. --}}
-                            <a href="{{ route('worksheet', ['generator' => \Illuminate\Support\Str::after($generator->key(), '.')]) }}?{{ http_build_query([...$params, 'seed' => $generation->seed->token(), 'count' => 20]) }}"
-                               target="_blank" rel="noopener"
-                               class="mt-2 flex w-full items-center justify-between gap-3 border border-line px-4 py-2.5 text-left text-xs text-text transition-colors hover:border-signal hover:text-signal">
-                                <span>
-                                    Printable worksheet
-                                    <span class="mt-0.5 block font-mono text-[0.62rem] text-muted num">20 problems · answers on page 2</span>
-                                </span>
-                                <span aria-hidden="true" class="shrink-0 font-mono text-[0.62rem] text-muted">↗</span>
-                            </a>
-
-                            <p class="mt-2 font-mono text-[0.62rem] leading-relaxed text-muted">
-                                The seed is printed in the footer, so the same sheet comes back
-                                from the same link — and a different seed is a different sheet.
-                            </p>
-                        @endif
-
-                        @if ($generator->renderer() === Renderer::Audio)
-                            <button type="button" @click="downloadWav()" :disabled="drawing || audio === null"
-                                    class="mt-2 flex w-full items-center justify-between gap-3 border border-line px-4 py-2.5 text-left text-xs text-text transition-colors hover:border-signal hover:text-signal disabled:opacity-50">
-                                <span>
-                                    Download WAV
-                                    <span class="mt-0.5 block font-mono text-[0.62rem] text-muted num">16-bit PCM · <span x-text="total">0:00</span></span>
-                                </span>
-                                <span x-show="exported" x-cloak class="shrink-0 font-mono text-[0.62rem] text-signal num" x-text="exported"></span>
-                            </button>
-
-                            <p class="mt-2 font-mono text-[0.62rem] leading-relaxed text-muted">
-                                The file is the render, sample for sample — not a second performance
-                                of it. The seed below reproduces it anywhere.
-                            </p>
-
-                            {{-- A volume control is on screen at all times, and so is a hard
-                                 mute: docs/09 §9. This is the monitor level and it never
-                                 touches the file — the mix level that *is* written into the
-                                 WAV is the Volume control in the parameters panel, which
-                                 starts 12 dB below full scale. --}}
-                            <div class="mt-4 border-t border-line pt-4">
-                                <div class="flex items-center justify-between gap-3 font-mono text-[0.65rem] text-muted">
-                                    <label for="monitor-volume">monitor</label>
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-signal num" x-text="`${Math.round(monitor * 100)}%`">80%</span>
-                                        <button type="button" @click="toggleMute()"
-                                                :class="muted ? 'border-warn/50 text-warn' : 'border-line text-muted'"
-                                                class="border px-2 py-0.5 transition-colors hover:border-signal hover:text-signal">
-                                            <span x-text="muted ? 'muted' : 'mute'">mute</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <input id="monitor-volume" type="range" min="0" max="1" step="0.01"
-                                       x-model.number="monitor"
-                                       @input="setMonitor($event.target.value)"
-                                       class="mt-3 w-full">
-                            </div>
-                        @endif
-
-                    </div>
-                </div>
-            </aside>
         </div>
 
         <p class="mx-auto max-w-7xl px-6 py-8 font-mono text-[0.68rem] text-muted">
@@ -664,5 +701,41 @@
             <a href="/api/v1/g/{{ $generator->key() }}" class="text-signal hover:underline">/api/v1/g/{{ $generator->key() }}</a>
             run the same code. There is no private endpoint.
         </p>
+
+        {{-- ── The phone's action bar ────────────────────────────────────────
+             The desktop layout keeps Generate in a sticky rail beside the result;
+             a phone has no rail, and a panel of fifteen sliders would otherwise
+             bury the one control everybody came for. So the same two actions are
+             pinned to the bottom of the viewport and keep their sub-labels —
+             *new entropy* against *same seed* is the lesson, and it does not
+             survive being shortened to two icons.
+
+             `data-mobile-actions` is what app.css keys the document's bottom
+             padding off, so the footer ends above the bar rather than under it. --}}
+        <div data-mobile-actions
+             class="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ground/95 backdrop-blur-md lg:hidden">
+            <div class="flex items-stretch gap-2 px-3 py-2.5">
+                <button type="button" @click="generate()" :disabled="busy"
+                        class="min-h-12 flex-1 bg-signal px-4 py-2 text-left text-sm font-medium text-ground transition-opacity disabled:opacity-50">
+                    <span x-text="busy ? 'Drawing…' : 'Generate'">Generate</span>
+                    <span class="mt-0.5 block font-mono text-[0.62rem] font-normal opacity-70">new entropy</span>
+                </button>
+
+                @unless ($generator->isSensitive())
+                    <button type="button" @click="rerender()" :disabled="busy"
+                            class="relative min-h-12 flex-1 border border-line px-4 py-2 text-left text-sm text-text transition-colors disabled:opacity-50">
+                        Re-render
+                        <span class="mt-0.5 block font-mono text-[0.62rem] text-muted">same seed</span>
+                        <span x-show="dirty" x-cloak class="absolute right-2 top-2 size-1.5 rounded-full bg-signal" aria-hidden="true"></span>
+                    </button>
+                @endunless
+
+                <button type="button" @click="copy()"
+                        aria-label="Copy result"
+                        class="flex min-h-12 w-14 shrink-0 items-center justify-center border border-line font-mono text-[0.65rem] text-text transition-colors">
+                    <span x-text="copied ? '✓' : 'Copy'">Copy</span>
+                </button>
+            </div>
+        </div>
     </div>
 </x-layout>

@@ -7,9 +7,13 @@
  */
 import { Rng } from './rng.js'
 import { render as automaton } from './patterns/automaton.js'
+import { render as lsystem } from './patterns/lsystem.js'
+import { render as maze } from './patterns/maze.js'
 import { render as perlin } from './patterns/perlin.js'
+import { render as poisson } from './patterns/poisson.js'
 import { render as reaction } from './patterns/reaction.js'
 import { render as truchet } from './patterns/truchet.js'
+import { render as voronoi } from './patterns/voronoi.js'
 import { render as worley } from './patterns/worley.js'
 
 const RENDERERS = {
@@ -18,6 +22,10 @@ const RENDERERS = {
   automaton,
   reaction,
   truchet,
+  poisson,
+  maze,
+  voronoi,
+  lsystem,
 }
 
 export function isRenderable (algorithm) {

@@ -29,13 +29,21 @@ use App\Random\Generators\Equations\SystemGenerator;
 use App\Random\Generators\Images\BlobGenerator;
 use App\Random\Generators\Images\FlowFieldGenerator;
 use App\Random\Generators\Images\IdenticonGenerator;
+use App\Random\Generators\Numbers\CoordinatesGenerator;
 use App\Random\Generators\Numbers\DiceGenerator;
+use App\Random\Generators\Numbers\GaussianGenerator;
 use App\Random\Generators\Numbers\IntegersGenerator;
+use App\Random\Generators\Numbers\LotteryGenerator;
 use App\Random\Generators\Numbers\PasswordGenerator;
+use App\Random\Generators\Numbers\UuidGenerator;
 use App\Random\Generators\Patterns\AutomatonGenerator;
+use App\Random\Generators\Patterns\LsystemGenerator;
+use App\Random\Generators\Patterns\MazeGenerator;
 use App\Random\Generators\Patterns\PerlinGenerator;
+use App\Random\Generators\Patterns\PoissonGenerator;
 use App\Random\Generators\Patterns\ReactionGenerator;
 use App\Random\Generators\Patterns\TruchetGenerator;
+use App\Random\Generators\Patterns\VoronoiGenerator;
 use App\Random\Generators\Patterns\WorleyGenerator;
 use App\Random\Generators\Words\ArticleGenerator;
 use App\Random\Generators\Words\BrandGenerator;
@@ -97,6 +105,10 @@ return [
     'generators' => [
         IntegersGenerator::class,
         DiceGenerator::class,
+        GaussianGenerator::class,
+        CoordinatesGenerator::class,
+        LotteryGenerator::class,
+        UuidGenerator::class,
         PasswordGenerator::class,
         PassphraseGenerator::class,
         PseudoWordsGenerator::class,
@@ -119,6 +131,10 @@ return [
         AutomatonGenerator::class,
         ReactionGenerator::class,
         TruchetGenerator::class,
+        PoissonGenerator::class,
+        VoronoiGenerator::class,
+        MazeGenerator::class,
+        LsystemGenerator::class,
         FlowFieldGenerator::class,
         BlobGenerator::class,
         IdenticonGenerator::class,

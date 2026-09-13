@@ -78,6 +78,16 @@
                            class="whitespace-nowrap font-mono text-xs text-signal hover:underline">Check it yourself ↗</a>
                     @endif
                 </p>
+
+                {{-- The studio for *this* generator, kept as the small affordance it is.
+                     The big button goes to the catalogue, because dropping a first-time
+                     visitor into one arbitrary generator hides the other thirty-one. --}}
+                <p class="border-t border-line px-5 py-2.5">
+                    <a href="{{ route('studio', ['module' => $heroModule, 'generator' => $heroGenerator]) }}"
+                       class="inline-flex min-h-11 items-center font-mono text-xs text-signal hover:underline">
+                        See how this one was made →
+                    </a>
+                </p>
             </div>
 
             <p class="mt-6 max-w-2xl leading-relaxed text-muted">
@@ -89,14 +99,14 @@
                 @endif
             </p>
 
-            <div class="mt-9 flex flex-wrap items-center gap-3">
-                <a href="{{ route('studio', ['module' => $heroModule, 'generator' => $heroGenerator]) }}"
-                   class="inline-flex items-center gap-2 bg-signal px-5 py-2.5 text-sm font-medium text-ground transition-opacity hover:opacity-90">
-                    Open this in the studio
+            <div class="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <a href="{{ route('library') }}"
+                   class="inline-flex min-h-12 items-center justify-center gap-2 bg-signal px-5 py-3 text-sm font-medium text-ground transition-opacity hover:opacity-90 sm:justify-start">
+                    Browse {{ $counts['generators'] }} generators
                     <span aria-hidden="true">→</span>
                 </a>
                 <a href="{{ route('entropy') }}"
-                   class="inline-flex items-center gap-2 border border-line px-5 py-2.5 text-sm font-medium text-text transition-colors hover:border-muted">
+                   class="inline-flex min-h-12 items-center justify-center gap-2 border border-line px-5 py-3 text-sm font-medium text-text transition-colors hover:border-muted sm:justify-start">
                     See where it comes from
                 </a>
             </div>
@@ -130,10 +140,15 @@
          tab left open here never costs a beacon a single request. --}}
     <section aria-label="Live entropy sources" class="border-b border-line bg-surface/40"
              x-data="entropyTicker(@js($sources))">
-        <div class="mx-auto max-w-7xl overflow-x-auto px-6">
+        {{-- Eleven mono cells never fit a phone, and squashing them would cost the
+             one thing the strip is for: a real value you can read. So it scrolls
+             under a finger — momentum, no scrollbar chrome — and the right edge is
+             masked so a half-shown cell reads as "there is more" rather than as a
+             clipped layout. --}}
+        <div class="scroll-x mx-auto max-w-7xl px-6 edge-fade lg:[mask-image:none]">
             <ul class="flex min-w-max items-stretch divide-x divide-line font-mono text-xs">
                 @foreach ($sources as $i => $source)
-                    <li class="flex items-center gap-3 px-5 py-3">
+                    <li class="flex items-center gap-3 px-4 py-3.5 sm:px-5">
                         <span class="animate-blip inline-block size-1.5 shrink-0 rounded-full {{ $source['status'] === 'up' ? 'bg-signal' : 'bg-warn' }}"
                               :class="isUp({{ $i }}) ? 'bg-signal' : 'bg-warn'"
                               aria-hidden="true"></span>
@@ -169,7 +184,7 @@
                     code is just a wishlist.
                 </p>
             </div>
-            <a href="{{ route('library') }}" class="text-sm text-signal hover:underline">
+            <a href="{{ route('library') }}" class="tap inline-flex items-center text-sm text-signal hover:underline">
                 Browse the library →
             </a>
         </div>
@@ -202,7 +217,7 @@
                                 @php [$m, $g] = explode('.', $generator->key(), 2); @endphp
                                 <li>
                                     <a href="{{ route('studio', ['module' => $m, 'generator' => $g]) }}"
-                                       class="block bg-surface/60 px-3 py-1.5 font-mono text-xs text-signal transition-colors hover:bg-surface">
+                                       class="tap flex items-center bg-surface/60 px-3 py-2 font-mono text-xs text-signal transition-colors hover:bg-surface">
                                         {{ $generator->name() }} →
                                     </a>
                                 </li>
@@ -234,7 +249,7 @@
             </p>
 
             <ol class="mt-12 grid gap-px border border-line bg-line lg:grid-cols-3">
-                <li class="bg-ground p-7">
+                <li class="min-w-0 bg-ground p-6 sm:p-7">
                     <p class="font-mono text-xs text-signal num">01</p>
                     <h3 class="mt-3 text-lg font-medium tracking-tight">Collect</h3>
                     <p class="mt-3 text-sm leading-relaxed text-muted">
@@ -247,7 +262,7 @@
                     </p>
                 </li>
 
-                <li class="bg-ground p-7">
+                <li class="min-w-0 bg-ground p-6 sm:p-7">
                     <p class="font-mono text-xs text-signal num">02</p>
                     <h3 class="mt-3 text-lg font-medium tracking-tight">Condition</h3>
                     <p class="mt-3 text-sm leading-relaxed text-muted">
@@ -281,7 +296,7 @@ seed = hash_hkdf('sha256', ikm, 16, 'randomly.seed')</code></pre>
                     </svg>
                 </li>
 
-                <li class="bg-ground p-7">
+                <li class="min-w-0 bg-ground p-6 sm:p-7">
                     <p class="font-mono text-xs text-signal num">03</p>
                     <h3 class="mt-3 text-lg font-medium tracking-tight">Generate</h3>
                     <p class="mt-3 text-sm leading-relaxed text-muted">
@@ -301,7 +316,7 @@ seed = hash_hkdf('sha256', ikm, 16, 'randomly.seed')</code></pre>
     {{-- ── Receipt + API ──────────────────────────────────────────────────── --}}
     <section id="api" class="mx-auto max-w-7xl scroll-mt-20 px-6 py-20">
         <div class="grid gap-12 lg:grid-cols-2">
-            <div>
+            <div class="min-w-0">
                 <h2 class="text-3xl font-semibold tracking-tighter sm:text-4xl">Every result has a receipt.</h2>
                 <p class="mt-3 text-muted">
                     This is the receipt for the numbers at the top of this page — not an example,
@@ -350,7 +365,7 @@ seed = hash_hkdf('sha256', ikm, 16, 'randomly.seed')</code></pre>
                 @endif
             </div>
 
-            <div>
+            <div class="min-w-0">
                 <h2 class="text-3xl font-semibold tracking-tighter sm:text-4xl">The same API we use.</h2>
                 <p class="mt-3 text-muted">
                     There is no private API. This page's own hero went through the endpoints below.

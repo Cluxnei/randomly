@@ -48,8 +48,8 @@
     </a>
 
     <header class="sticky top-0 z-50 border-b border-line bg-ground/80 backdrop-blur-md">
-        <div class="mx-auto flex max-w-7xl items-center gap-6 px-6 py-3">
-            <a href="{{ route('home') }}" class="group flex min-w-0 flex-col leading-none">
+        <div class="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 sm:gap-6 sm:px-6 sm:py-3">
+            <a href="{{ route('home') }}" class="tap group flex min-w-0 flex-col justify-center leading-none">
                 <span class="text-[0.95rem] font-semibold tracking-tight text-text">
                     Randomly<span class="text-signal">.</span>
                 </span>
@@ -58,7 +58,7 @@
                 </span>
             </a>
 
-            <nav aria-label="Primary" class="ml-auto flex items-center gap-1 text-sm">
+            <nav aria-label="Primary" class="ml-auto flex items-center gap-0.5 text-sm sm:gap-1">
                 @php
                     $navLinks = [
                         ['label' => 'Library', 'href' => route('library'), 'active' => request()->routeIs('library')],
@@ -70,7 +70,7 @@
                 @foreach ($navLinks as $link)
                     <a href="{{ $link['href'] }}"
                        @if ($link['active']) aria-current="page" @endif
-                       class="rounded-sm px-3 py-1.5 transition-colors hover:text-text
+                       class="tap inline-flex items-center rounded-sm px-2.5 py-2 transition-colors hover:text-text sm:px-3
                               {{ $link['active'] ? 'text-signal' : 'text-muted' }}">
                         {{ $link['label'] }}
                     </a>
@@ -84,7 +84,7 @@
     </main>
 
     <footer class="border-t border-line bg-ground">
-        <div class="mx-auto max-w-7xl px-6 py-14">
+        <div class="mx-auto max-w-7xl px-6 py-12 sm:py-14">
             <div class="grid gap-10 md:grid-cols-[1.1fr_1fr_1fr]">
                 <div>
                     <p class="text-sm font-semibold tracking-tight">Randomly<span class="text-signal">.</span></p>
@@ -120,7 +120,7 @@
                         @endforeach
                     </ul>
                     <p class="mt-4 text-sm text-muted">
-                        <a href="{{ route('credits') }}" class="text-signal hover:underline">Every source, every licence →</a>
+                        <a href="{{ route('credits') }}" class="tap inline-flex items-center text-signal hover:underline">Every source, every licence →</a>
                     </p>
                     <p class="mt-2 text-sm text-muted">Free does not mean uncredited.</p>
                 </div>

@@ -7,12 +7,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Random\Entropy\EntropyPool;
 use App\Random\GeneratorRegistry;
+use App\Random\Media\MediaRenderer;
+use App\Random\Media\MediaUnavailable;
 use App\Random\Studio\Generation;
 use App\Random\Studio\Studio;
 use App\Random\Studio\VersionChanged;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * The public API. The site's own pages call the same Studio these endpoints do,
@@ -24,6 +27,7 @@ final class ApiController extends Controller
         private readonly GeneratorRegistry $registry,
         private readonly EntropyPool $pool,
         private readonly Studio $studio,
+        private readonly MediaRenderer $media,
     ) {}
 
     public function generators(): JsonResponse
@@ -36,7 +40,7 @@ final class ApiController extends Controller
         return response()->json(['sources' => $this->pool->status()]);
     }
 
-    public function generate(Request $request): JsonResponse|Response
+    public function generate(Request $request): JsonResponse|Response|BinaryFileResponse
     {
         $key = (string) $request->input('generator', $request->route('key', ''));
 
@@ -68,7 +72,7 @@ final class ApiController extends Controller
         return $this->respond($request, $generation);
     }
 
-    public function replay(string $token, Request $request): JsonResponse|Response
+    public function replay(string $token, Request $request): JsonResponse|Response|BinaryFileResponse
     {
         $key = (string) $request->query('g', '');
 
@@ -107,15 +111,86 @@ final class ApiController extends Controller
     }
 
     /**
-     * `text/plain` exists so the one-liner in the docs actually works:
-     * being curl-able without a key is part of the pitch.
+     * Content negotiation, so every generator is fully usable over HTTP.
+     *
+     * A canvas or audio generator returns a spec by design — that is what keeps the
+     * studio's responses small and its sliders instant — but an API caller holding a
+     * description of an image has not been given an image. `image/png` and
+     * `audio/wav` render server-side through the same JavaScript the browser runs.
+     *
+     * `?format=` is honoured alongside `Accept:` because the one-liner in the docs is
+     * part of the pitch, and `curl -o out.png '...&format=png'` is a great deal easier
+     * to type and to remember than an Accept header.
      */
-    private function respond(Request $request, Generation $generation): JsonResponse|Response
+    private function respond(Request $request, Generation $generation): JsonResponse|Response|BinaryFileResponse
     {
-        if (str_contains((string) $request->header('Accept'), 'text/plain')) {
+        $format = $this->negotiate($request);
+
+        if ($format === 'text') {
             return response($generation->result->display."\n", 200, ['Content-Type' => 'text/plain; charset=utf-8']);
         }
 
+        if ($format === 'png' || $format === 'wav') {
+            return $this->file($generation, $format);
+        }
+
         return response()->json($generation->toArray());
+    }
+
+    private function negotiate(Request $request): string
+    {
+        $requested = strtolower((string) $request->query('format', ''));
+
+        if (in_array($requested, ['png', 'wav', 'text', 'json'], true)) {
+            return $requested;
+        }
+
+        $accept = strtolower((string) $request->header('Accept'));
+
+        return match (true) {
+            str_contains($accept, 'image/png') => 'png',
+            str_contains($accept, 'audio/wav'), str_contains($accept, 'audio/x-wav') => 'wav',
+            str_contains($accept, 'text/plain') => 'text',
+            default => 'json',
+        };
+    }
+
+    private function file(Generation $generation, string $format): JsonResponse|BinaryFileResponse
+    {
+        try {
+            $path = $this->media->render($generation, $format);
+        } catch (MediaUnavailable $e) {
+            // 406 rather than 500 or a silent JSON fallback: the caller asked for a
+            // representation that does not exist for this generator, and saying which
+            // ones do is more useful than any of the alternatives.
+            return response()->json([
+                'error' => 'unsupported_format',
+                'message' => $e->getMessage(),
+                'available' => $this->formatsFor($generation),
+            ], 406);
+        }
+
+        $filename = sprintf('randomly-%s-%s.%s',
+            str_replace('.', '-', $generation->generator->key()),
+            strtolower($generation->seed->token()),
+            $format,
+        );
+
+        return response()->file($path, [
+            'Content-Type' => $format === 'png' ? 'image/png' : 'audio/wav',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
+    }
+
+    /** @return list<string> */
+    private function formatsFor(Generation $generation): array
+    {
+        return array_values(array_filter([
+            'application/json',
+            'text/plain',
+            $this->media->supports($generation, 'png') ? 'image/png' : null,
+            $this->media->supports($generation, 'wav') ? 'audio/wav' : null,
+        ]));
     }
 }

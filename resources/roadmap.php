@@ -17,14 +17,10 @@ declare(strict_types=1);
 return [
     'numbers' => [
         ['key' => 'numbers.decimals', 'name' => 'Decimals', 'tagline' => 'Floats in a range, at a precision you choose.'],
-        ['key' => 'numbers.gaussian', 'name' => 'Bell Curve', 'tagline' => 'The normal distribution by Box–Muller, with a live histogram.'],
         ['key' => 'numbers.distribution', 'name' => 'Distribution Lab', 'tagline' => 'Poisson, Pareto, Zipf, Beta, Cauchy — sampled and plotted.'],
         ['key' => 'numbers.coin', 'name' => 'Coin Flips', 'tagline' => 'Biased or fair, showing the longest run against the expected log₂ n.'],
-        ['key' => 'numbers.lottery', 'name' => 'Lottery', 'tagline' => 'Mega-Sena, Powerball and EuroMillions, bonus pool included.'],
-        ['key' => 'numbers.uuid', 'name' => 'Identifiers', 'tagline' => 'UUID v4 and v7, ULID, NanoID — v7 shows its timestamp prefix.'],
         ['key' => 'numbers.bytes', 'name' => 'Raw Bytes', 'tagline' => 'The entropy itself, in hex, base64 or binary.'],
         ['key' => 'numbers.prime', 'name' => 'Primes', 'tagline' => 'Miller–Rabin, forty rounds, at the bit width you ask for.'],
-        ['key' => 'numbers.coordinates', 'name' => 'Earth Points', 'tagline' => 'Uniform on a sphere — not the latitude bug everyone ships.'],
         ['key' => 'numbers.timestamp', 'name' => 'Moments', 'tagline' => 'A random instant inside a window you define.'],
     ],
 
@@ -37,11 +33,7 @@ return [
         ['key' => 'patterns.simplex', 'name' => 'Simplex Noise', 'tagline' => 'Fewer directional artefacts, cheaper in higher dimensions.'],
         ['key' => 'patterns.spectral', 'name' => 'Spectral Noise', 'tagline' => '1/f^β synthesised in the frequency domain.'],
         ['key' => 'patterns.life', 'name' => 'Life', 'tagline' => 'Conway from a random soup, with a density control.'],
-        ['key' => 'patterns.poisson', 'name' => 'Blue Noise', 'tagline' => 'Poisson-disk beside uniform random — the difference is the lesson.'],
-        ['key' => 'patterns.voronoi', 'name' => 'Voronoi', 'tagline' => 'Cells coloured by area or by a noise field.'],
-        ['key' => 'patterns.maze', 'name' => 'Mazes', 'tagline' => 'DFS, Kruskal and Wilson side by side — algorithm as bias.'],
         ['key' => 'patterns.wfc', 'name' => 'Wave Function Collapse', 'tagline' => 'Overlapping model, min-entropy heuristic, backtracking.'],
-        ['key' => 'patterns.lsystem', 'name' => 'L-Systems', 'tagline' => 'Stochastic rewrite rules: trees, ferns, dragon curves.'],
         ['key' => 'patterns.walk', 'name' => 'Random Walks', 'tagline' => 'Brownian, self-avoiding and Lévy — the fat tail is visible.'],
         ['key' => 'patterns.dla', 'name' => 'Diffusion-Limited Aggregation', 'tagline' => 'Dendritic crystals, grown one sticky particle at a time.'],
     ],

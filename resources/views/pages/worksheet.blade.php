@@ -188,12 +188,51 @@
             color: var(--faint);
         }
 
+        /* The permalink in the footer is a long unbroken URL, and it has to be
+           readable on paper — so it wraps rather than running off the sheet. */
+        .colophon span {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
         .colophon .seed { color: var(--ink); }
 
         /* KaTeX sizes itself from the surrounding text; display mode adds margins
            this layout supplies itself. */
         .katex { font-size: 1.05em; }
         .katex-display { margin: 0; text-align: left; }
+
+        /*
+         * On a phone the sheet is not a sheet.
+         *
+         * A4 margins are 16mm — sixty pixels a side on a 360px screen, which
+         * leaves two hundred for the maths. So the page keeps its paper look and
+         * gives the margins up, and two columns of quadratics collapse to one: a
+         * worksheet is read here and printed elsewhere, and the print rules below
+         * are untouched by any of this.
+         */
+        @media screen and (max-width: 640px) {
+            .sheet {
+                width: auto;
+                max-width: 100%;
+                min-height: 0;
+                margin: 0 0 1rem;
+                padding: 1.25rem 1rem 1.5rem;
+            }
+
+            .problems,
+            .key {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 0.2rem;
+            }
+
+            .masthead { flex-wrap: wrap; }
+            .brand { text-align: left; white-space: normal; }
+            .masthead h1 { font-size: 1.15rem; }
+            .fields { gap: 1rem; }
+            .toolbar { padding: 0.9rem 0.75rem; }
+            .toolbar a, .toolbar button { min-height: 2.75rem; display: inline-flex; align-items: center; }
+        }
 
         @media print {
             @page { size: A4; margin: 14mm; }

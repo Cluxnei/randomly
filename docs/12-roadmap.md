@@ -65,7 +65,7 @@ filling in the registry.
 - Remaining external sources: `Bitcoin`, `Seismic`, `SpaceWeather`, `Atmosphere`, `Iss`, `AnuQrng`
 - Credits page
 
-## Phase 7 — Fill out the registry (ongoing)
+## Phase 7 — Fill out the registry (ongoing · 8 shipped, 23 to go)
 
 Every remaining generator from `04`–`09`. Each is one class plus one registry line; they
 can be added in any order, by anyone, without touching the framework. That property is

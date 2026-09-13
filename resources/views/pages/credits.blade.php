@@ -166,13 +166,13 @@
     <section class="mx-auto max-w-7xl px-6 py-16">
         <div class="flex flex-wrap items-baseline justify-between gap-3">
             <h2 class="text-2xl font-semibold tracking-tighter sm:text-3xl">Where the randomness comes from</h2>
-            <a href="{{ route('entropy') }}" class="text-sm text-signal hover:underline">See them live →</a>
+            <a href="{{ route('entropy') }}" class="tap inline-flex items-center text-sm text-signal hover:underline">See them live →</a>
         </div>
 
         <ul class="mt-8 grid gap-px border border-line bg-line lg:grid-cols-2">
             @foreach ($sources as $source)
                 @php $term = $terms[$source['key']] ?? null; @endphp
-                <li class="bg-ground p-6">
+                <li class="min-w-0 bg-ground p-5 sm:p-6">
                     <div class="flex items-start justify-between gap-4">
                         <h3 class="text-base font-medium tracking-tight">{{ $source['label'] }}</h3>
                         <span class="shrink-0 border px-2 py-0.5 font-mono text-[0.65rem] {{ $source['class'] === 'A' ? 'border-signal/40 text-signal' : 'border-line text-muted' }}">
@@ -190,7 +190,7 @@
                         <p class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[0.68rem] text-muted num">
                             <span class="text-text">{{ $term['licence'] }}</span>
                             <a href="{{ $term['url'] }}" target="_blank" rel="noopener noreferrer"
-                               class="ml-auto text-signal hover:underline">{{ parse_url($term['url'], PHP_URL_HOST) }} ↗</a>
+                               class="tap ml-auto inline-flex items-center text-signal hover:underline">{{ parse_url($term['url'], PHP_URL_HOST) }} ↗</a>
                         </p>
                     @else
                         {{-- A source wired without a credit. Saying so is better than
@@ -221,7 +221,7 @@
                             {{ $corpus['licence'] }}
                             @if ($corpus['url'])
                                 <a href="{{ $corpus['url'] }}" target="_blank" rel="noopener noreferrer"
-                                   class="ml-2 text-signal hover:underline">↗</a>
+                                   class="tap ml-2 inline-flex items-center px-1 text-signal hover:underline"><span class="sr-only">{{ $corpus['name'] }} — </span>↗</a>
                             @endif
                         </p>
                     </li>
@@ -236,11 +236,14 @@
 
         <ul class="mt-8 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($software as $item)
-                <li class="bg-ground p-5">
-                    <p class="flex items-baseline justify-between gap-3">
+                <li class="min-w-0 bg-ground p-5">
+                    {{-- A licence string can be as long as "ODbL · © OpenStreetMap
+                         contributors", which is wider than a phone. It wraps under the
+                         name rather than pushing the card past the viewport. --}}
+                    <p class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                         <a href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer"
-                           class="font-medium tracking-tight hover:text-signal">{{ $item['name'] }}</a>
-                        <span class="shrink-0 font-mono text-[0.65rem] text-muted num">{{ $item['licence'] }}</span>
+                           class="tap inline-flex items-center font-medium tracking-tight hover:text-signal">{{ $item['name'] }}</a>
+                        <span class="min-w-0 font-mono text-[0.65rem] text-muted num">{{ $item['licence'] }}</span>
                     </p>
                     <p class="mt-2 text-sm leading-relaxed text-muted">{{ $item['note'] }}</p>
                 </li>

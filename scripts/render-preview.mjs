@@ -11,15 +11,19 @@ import { deflateSync } from 'node:zlib'
 import { writeFileSync } from 'node:fs'
 import { Rng } from '../resources/js/rng.js'
 import { render as automaton } from '../resources/js/patterns/automaton.js'
+import { render as lsystem } from '../resources/js/patterns/lsystem.js'
+import { render as maze } from '../resources/js/patterns/maze.js'
 import { render as perlin } from '../resources/js/patterns/perlin.js'
+import { render as poisson } from '../resources/js/patterns/poisson.js'
 import { render as reaction } from '../resources/js/patterns/reaction.js'
 import { render as truchet } from '../resources/js/patterns/truchet.js'
+import { render as voronoi } from '../resources/js/patterns/voronoi.js'
 import { render as worley } from '../resources/js/patterns/worley.js'
 import { render as blob } from '../resources/js/images/blob.js'
 import { render as flowfield } from '../resources/js/images/flowfield.js'
 import { render as identicon } from '../resources/js/images/identicon.js'
 
-const RENDERERS = { perlin, worley, automaton, reaction, truchet, flowfield, blob, identicon }
+const RENDERERS = { perlin, worley, automaton, reaction, truchet, poisson, maze, voronoi, lsystem, flowfield, blob, identicon }
 
 /*
  * The image renderers draw a good deal more per pixel than the pattern ones, so
@@ -81,7 +85,15 @@ function encodePng (width, height, rgba) {
   ])
 }
 
-const payload = JSON.parse(process.argv[2])
+import { readFileSync } from 'node:fs'
+
+// Accept either inline JSON (handy from a shell) or a path to a file. The API
+// takes the file route: a spec with a long palette or a big score can exceed the
+// argument-length limit, and failing there would be a confusing way to find out.
+const argument = process.argv[2]
+const payload = JSON.parse(
+  argument.trim().startsWith('{') ? argument : readFileSync(argument, 'utf8'),
+)
 const out = process.argv[3]
 const spec = payload.value
 

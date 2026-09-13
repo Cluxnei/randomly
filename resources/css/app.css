@@ -150,6 +150,29 @@
         outline-offset: 2px;
     }
 
+    /*
+    | A finger is not a mouse pointer. On a touch screen the same slider gets a
+    | 44px grab band and a thumb wide enough to find without looking — the track
+    | stays a hairline, because the instrument look is the point.
+    */
+    @media (pointer: coarse) {
+        input[type='range'] {
+            height: 2.75rem;
+            cursor: pointer;
+        }
+
+        input[type='range']::-webkit-slider-thumb {
+            width: 0.75rem;
+            height: 1.75rem;
+            margin-top: -0.875rem;
+        }
+
+        input[type='range']::-moz-range-thumb {
+            width: 0.75rem;
+            height: 1.75rem;
+        }
+    }
+
     /* Spinners fight the mono alignment and are useless at these ranges. */
     input[type='number']::-webkit-outer-spin-button,
     input[type='number']::-webkit-inner-spin-button {
@@ -198,6 +221,55 @@
 /* Hairline rule used as a section divider. */
 @utility rule {
     border-top: 1px solid var(--color-line);
+}
+
+/*
+| A strip that scrolls sideways under a finger instead of squashing.
+|
+| The scrollbar chrome is removed because on a phone it is never there anyway and
+| on a trackpad it covers the last row of a one-line ticker. Wide content still
+| has to *look* scrollable, which is what `.edge-fade` is for — a mask that
+| softens the right edge so a cut-off cell reads as "there is more" rather than
+| as a layout fault.
+*/
+@utility scroll-x {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+@utility edge-fade {
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent 100%);
+}
+
+/*
+| Touch targets.
+|
+| 44px is the floor on a coarse pointer — a slider handle, a segmented option, a
+| filter chip. Left alone on a mouse, where a 32px control is comfortable and a
+| 44px one is a form rather than an instrument.
+*/
+@utility tap {
+    @media (pointer: coarse) {
+        min-height: 2.75rem;
+    }
+}
+
+/*
+| The studio's mobile action bar is fixed to the bottom of the viewport, so the
+| document needs to end above it. Keyed off the bar's own presence rather than a
+| class on the layout, so only the pages that have one pay for it.
+*/
+@media (max-width: 1023px) {
+    body:has([data-mobile-actions]) {
+        padding-bottom: 5.25rem;
+    }
 }
 
 /*

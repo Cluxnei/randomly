@@ -119,7 +119,7 @@
 
                     <ul class="mt-px grid gap-px border border-line bg-line lg:grid-cols-2">
                         @foreach ($group as $i => $source)
-                            <li class="bg-ground p-6">
+                            <li class="min-w-0 bg-ground p-5 sm:p-6">
                                 <div class="flex items-start justify-between gap-4">
                                     <div class="min-w-0">
                                         <h3 class="flex items-center gap-2.5 text-base font-medium tracking-tight">
@@ -143,7 +143,7 @@
                                         drawn fresh per request · never cached
                                     </p>
                                 @else
-                                    <p class="mt-5 border border-line bg-surface/50 px-3 py-2.5 font-mono text-xs num
+                                    <p class="scroll-x mt-5 whitespace-nowrap border border-line bg-surface/50 px-3 py-2.5 font-mono text-xs num
                                               {{ $source['current'] === null ? 'text-muted' : 'text-signal' }}"
                                        :class="current({{ $i }}) === '—' ? 'text-muted' : 'text-signal'"
                                        x-text="current({{ $i }})">{{ $source['current'] ?? '—' }}</p>
@@ -164,7 +164,7 @@
 
                                     @if ($source['proof_url'])
                                         <a href="{{ $source['proof_url'] }}" target="_blank" rel="noopener noreferrer"
-                                           class="ml-auto text-signal hover:underline">proof ↗</a>
+                                           class="tap ml-auto inline-flex items-center text-signal hover:underline">proof ↗</a>
                                     @else
                                         <span class="ml-auto">{{ $source['class'] === 'A' && $source['key'] === 'csprng' ? 'no third party involved' : 'no per-draw proof' }}</span>
                                     @endif
@@ -189,7 +189,10 @@
 
         <section class="border-t border-line bg-surface/30">
             <div class="mx-auto grid max-w-7xl gap-12 px-6 py-16 lg:grid-cols-2">
-                <div>
+                {{-- min-w-0: the HKDF block below is one long line, and a grid item
+                     defaults to min-width:auto — which would widen the whole page
+                     rather than scrolling inside the <pre>. --}}
+                <div class="min-w-0">
                     <h2 class="text-2xl font-semibold tracking-tighter sm:text-3xl">Freshness without hammering</h2>
                     <p class="mt-4 text-sm leading-relaxed text-muted">
                         Collected material is cached for as long as it stays fresh at the origin — a NIST
@@ -210,7 +213,7 @@ seed = hash_hkdf('sha256', ikm, 16, 'randomly.seed', salt)</code></pre>
                     </p>
                 </div>
 
-                <div>
+                <div class="min-w-0">
                     <h2 class="text-2xl font-semibold tracking-tighter sm:text-3xl">What we do not claim</h2>
 
                     <ul class="mt-5 divide-y divide-line border-y border-line text-sm">

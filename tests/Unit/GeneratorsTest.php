@@ -225,3 +225,33 @@ it('drops lookalike characters when asked', function () {
         expect($password)->not->toMatch('/[Il1O0o]/');
     }
 });
+
+it('reports meta the studio can actually render', function (Generator $generator): void {
+    // patterns.maze returned per-algorithm statistics as a nested array, the meta
+    // strip called implode() on it, and the whole studio page 500'd with "Array to
+    // string conversion". The view is defensive about it now, but the shape is
+    // still worth pinning: a generator describing itself thoroughly must never be
+    // able to take a page down.
+    $params = $generator->schema()->coerce([]);
+    $result = $generator->generate(
+        seedFor()->rng($generator->key(), $generator->version(), $params->fingerprint()),
+        $params,
+    );
+
+    foreach ($result->meta as $key => $value) {
+        expect($key)->toBeString();
+
+        // Everything must survive the trip to JSON — it goes out over the API as
+        // well as onto the page.
+        expect(json_encode([$key => $value], JSON_THROW_ON_ERROR))->toBeString();
+
+        if (is_array($value)) {
+            // A list of scalars is joined for display; anything else is summarised.
+            // Both paths are fine — an object or a resource is not.
+            array_walk_recursive($value, function ($leaf) use ($key): void {
+                expect($leaf)->not->toBeObject("meta[{$key}] contains an object, which cannot be displayed or serialised");
+                expect(is_resource($leaf))->toBeFalse("meta[{$key}] contains a resource");
+            });
+        }
+    }
+})->with(allGenerators());
