@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\OgController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\StudioController;
 use App\Http\Controllers\WorksheetController;
@@ -10,6 +11,18 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PageController::class, 'landing'])->name('home');
 Route::get('/library', [PageController::class, 'library'])->name('library');
 Route::get('/entropy', [PageController::class, 'entropy'])->name('entropy');
+Route::get('/credits', [PageController::class, 'credits'])->name('credits');
+
+/*
+ * Share cards, drawn with GD and cached under a hash of what is on them.
+ *
+ * Same trick as the permalink: the card for a result is recomputed from the URL
+ * rather than stored, so a crawler that arrives long after the share still gets
+ * the right image and there is still no database.
+ */
+Route::get('/og/site.png', [OgController::class, 'site'])->name('og.site');
+Route::get('/og/r/{token}.png', [OgController::class, 'result'])->name('og.result')->where('token', '[0-9A-Za-z]+');
+Route::get('/og/g/{module}/{generator}.png', [OgController::class, 'generator'])->name('og.generator');
 
 /*
  * The studio. There is one route for every generator in the registry rather than

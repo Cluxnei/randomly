@@ -49,6 +49,67 @@ final readonly class Generation
         ]));
     }
 
+    /**
+     * The preview image for this exact result.
+     *
+     * Carries the live receipt narrative, because a replayed receipt can only be
+     * reconstructed from a source key and a reference — "Originally drawn from
+     * USGS Seismic Feed (us7000th33)" where the real sentence read "A magnitude
+     * 3.6 earthquake, 67 km N of Culebra, Puerto Rico, 39.6 km down". That
+     * sentence is the product, and the shared card is where it reaches the most
+     * people, so it travels in the link.
+     *
+     * It travels **signed**. A card bearing the Randomly wordmark with text an
+     * attacker chose is a forgery generator, and "it is only a preview image" is
+     * not a defence — the preview is what most people ever see of a link.
+     */
+    public function ogImageUrl(): ?string
+    {
+        if ($this->generator->isSensitive() || ! $this->generator->isReproducible()) {
+            return null;
+        }
+
+        $narrative = $this->receipt->narrative;
+
+        return route('og.result', array_filter([
+            'token' => $this->seed->token(),
+            'g' => $this->generator->key(),
+            'v' => $this->generator->version(),
+            'p' => $this->encodedParams(),
+            's' => $this->receipt->sourceKey,
+            'r' => $this->receipt->reference,
+            'n' => $narrative,
+            'ns' => self::signNarrative($narrative),
+        ]));
+    }
+
+    /**
+     * The key is a parameter with a default rather than a hidden config() call.
+     *
+     * Unit tests here never boot the framework — that is what keeps the suite
+     * instant — so reaching for the container inside a pure function makes the one
+     * thing most worth testing untestable. Passing it also means the tests pin a
+     * fixed key instead of inheriting whatever APP_KEY the machine happens to have.
+     */
+    public static function signNarrative(string $narrative, ?string $key = null): string
+    {
+        $key ??= (string) config('app.key');
+
+        // Truncated to 16 bytes: this authenticates a caption, not a transaction,
+        // and a 128-bit tag is far beyond forging while keeping the URL from
+        // growing another 40 characters.
+        return substr(hash_hmac('sha256', $narrative, $key), 0, 32);
+    }
+
+    public static function verifyNarrative(?string $narrative, ?string $signature, ?string $key = null): ?string
+    {
+        if ($narrative === null || $signature === null || $signature === '') {
+            return null;
+        }
+
+        return hash_equals(self::signNarrative($narrative, $key), $signature) ? $narrative : null;
+    }
+
     public function encodedParams(): string
     {
         return rtrim(strtr(base64_encode(

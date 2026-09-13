@@ -82,9 +82,28 @@
         'permalink' => $permalink,
         'replayed' => $generation->replayed,
     ];
+
+    /*
+     * The share card for this page.
+     *
+     * When the result is reproducible the card is drawn from the token, so what
+     * a crawler renders is the result that was actually on screen when the link
+     * was shared. When it is not — a password, or anything built on live
+     * external material — the card describes the generator instead, because that
+     * is the only claim about this URL that stays true.
+     */
+    [$ogModule, $ogGenerator] = explode('.', $generator->key(), 2);
+
+    $ogImage = $generation->ogImageUrl()
+        ?? route('og.generator', ['module' => $ogModule, 'generator' => $ogGenerator]);
 @endphp
 
-<x-layout>
+<x-layout :og="[
+    'image' => $ogImage,
+    'title' => $generator->name() . ' · Randomly',
+    'description' => $generator->tagline(),
+    'alt' => 'A share card showing this result and the receipt naming where its randomness came from.',
+]">
     <x-slot:title>{{ $generator->name() }}</x-slot:title>
 
     <div x-data="studio(@js($config))" @keydown.window="shortcut($event)">

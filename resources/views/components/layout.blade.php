@@ -1,14 +1,42 @@
-@props(['wide' => false])
+@props(['wide' => false, 'og' => []])
+
+@php
+    $pageTitle = isset($title) ? trim($title) . ' · Randomly' : 'Randomly · Randomness, sourced from reality.';
+
+    /*
+     * The share card.
+     *
+     * Pages that are one specific result hand in their own image — drawn from
+     * that result's display string and its real receipt — and everything else
+     * falls back to the site card, which carries the two live counts. Nothing
+     * here is a stock photograph of a concept.
+     */
+    $ogImage = $og['image'] ?? route('og.site');
+    $ogDescription = $og['description']
+        ?? 'A library of random generators, seeded by verifiable real-world entropy. Every result ships with a receipt.';
+@endphp
 
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="A library of random generators, seeded by verifiable real-world entropy. Every result ships with a receipt.">
+    <meta name="description" content="{{ $ogDescription }}">
     <meta name="color-scheme" content="dark">
 
-    <title>{{ isset($title) ? $title . ' · Randomly' : 'Randomly · Randomness, sourced from reality.' }}</title>
+    <title>{{ $pageTitle }}</title>
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Randomly">
+    <meta property="og:title" content="{{ $og['title'] ?? $pageTitle }}">
+    <meta property="og:description" content="{{ $ogDescription }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="{{ $og['alt'] ?? 'A dark card reading “Randomness, sourced from reality.”' }}">
+    <meta name="twitter:card" content="summary_large_image">
 
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -74,19 +102,27 @@
                     <ul class="mt-4 space-y-2 text-sm text-muted">
                         <li>EFF wordlists — <span class="font-mono text-xs text-text">CC BY 3.0 US</span></li>
                         <li>Wikipedia summaries — <span class="font-mono text-xs text-text">CC BY-SA 4.0</span></li>
-                        <li>Lorem Picsum / Unsplash — photographer credit per image</li>
-                        <li>The Met <span class="font-mono text-xs text-text">CC0</span>, Art Institute of Chicago — public domain</li>
+                        <li>GBIF occurrence data — per-dataset, credited on the result</li>
+                        <li>JetBrains Mono — <span class="font-mono text-xs text-text">OFL 1.1</span></li>
                     </ul>
                 </div>
 
                 <div>
+                    {{-- Only what is actually wired and actually called. The catalogue of
+                         sources a planned generator will need lives on /credits, in its own
+                         list, marked as not yet in use. A footer that lists an API we have
+                         never called is exactly the kind of small lie this site is arguing
+                         against. --}}
                     <h2 class="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-muted">Sources we consume</h2>
                     <ul class="mt-4 flex flex-wrap gap-x-3 gap-y-2 font-mono text-xs text-muted">
-                        @foreach (['random.org', 'ANU QRNG', 'NIST', 'drand', 'USGS', 'NOAA', 'Open-Meteo', 'mempool.space', 'Datamuse', 'GBIF', 'Open Library'] as $source)
+                        @foreach (['random.org', 'ANU QRNG', 'NIST', 'drand', 'mempool.space', 'USGS', 'NOAA SWPC', 'Open-Meteo', 'Open Notify', 'Wikipedia', 'GBIF'] as $source)
                             <li class="border border-line px-2 py-1 text-text/80">{{ $source }}</li>
                         @endforeach
                     </ul>
-                    <p class="mt-4 text-sm text-muted">Free does not mean uncredited.</p>
+                    <p class="mt-4 text-sm text-muted">
+                        <a href="{{ route('credits') }}" class="text-signal hover:underline">Every source, every licence →</a>
+                    </p>
+                    <p class="mt-2 text-sm text-muted">Free does not mean uncredited.</p>
                 </div>
             </div>
 

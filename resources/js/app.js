@@ -730,12 +730,24 @@ Alpine.data('heroFlowField', (payload) => ({
             return;
         }
 
-        // Roughly forty frames, whatever the trail length. Fewer and the growth
-        // is a slideshow; more and the per-frame blit costs more than the
-        // drawing does.
-        const perFrame = Math.max(1, Math.ceil(payload.value.trail / 40));
+        // Around a hundred and fifty frames, whatever the trail length: the field
+        // grows over a couple of seconds and then stops. It is not a loop. A
+        // canvas that keeps moving after it has finished saying what it had to
+        // say is a space heater with a headline on it.
+        const perFrame = Math.max(1, Math.ceil(payload.value.trail / 150));
+        const startedAt = performance.now();
 
         const tick = () => {
+            // A slow machine does not get a slower animation, it gets a shorter
+            // one: past three seconds the rest of the pass is finished in a
+            // single blocking run and the picture simply lands.
+            if (performance.now() - startedAt > 3000) {
+                pass.run();
+                pass.commit();
+
+                return;
+            }
+
             for (let i = 0; i < perFrame && !pass.done; i++) pass.step();
 
             pass.commit();

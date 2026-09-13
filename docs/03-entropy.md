@@ -1,7 +1,7 @@
 # Entropy Sources
 
-Every source below was **probed live on 2026-09-12** from this machine. Free, no API key,
-no signup. Status column reflects that probe.
+Every source below was **probed live, and all ten are implemented and drawing**. Free,
+no API key, no signup.
 
 ## 1. The catalogue
 
@@ -21,6 +21,43 @@ no signup. Status column reflects that probe.
 Two candidates **failed to resolve** from this network and are excluded until verified:
 `api.dictionaryapi.dev` and `poetrydb.org` (both returned connection failure, not 4xx).
 `numbersapi.com` returned 404 on its documented path. Do not spec against them.
+
+## 1.1 What each one actually says
+
+The narrative is the product, so here is what the ten really produce — copied from live
+draws, not written as examples:
+
+```
+anu-qrng       Measured fluctuations of the quantum vacuum, in a laboratory in Canberra.
+               Not unpredictable because it is complicated — unpredictable as a matter
+               of physics.
+random-org     Atmospheric radio noise, sampled in Dublin moments ago.
+nist-beacon    NIST Beacon pulse #1,939,041 — chained to every pulse before it, and signed.
+drand          drand round 6,461,302 — no single operator could have predicted this value.
+bitcoin        Bitcoin block 966,768 — 19 leading zeros of proof-of-work, found about ten
+               minutes ago.
+seismic        A magnitude 3.6 earthquake, 67 km N of Culebra, Puerto Rico, 39.6 km down
+               — 28 minutes ago.
+space-weather  Planetary K-index 0.00 — the geomagnetic field was quiet when this was made.
+atmosphere     It was 22.5°C in Suva, Fiji, with a 14 km/h wind, when this was made.
+iss            The ISS was over 1.38° N, 1.77° W — 500 km south of Accra — when this was
+               drawn.
+csprng         Drawn from the kernel entropy pool on the server that rendered this page.
+```
+
+**A narrative must be true, not merely plausible.** The ISS source first described position
+with rectangular boxes — "over Africa", "over the Pacific" — and a draw at 4.40°N 3.92°W
+came out "over Africa or the Mediterranean" while the station was over open water in the
+Gulf of Guinea. It sounded right, which is what made it bad: on a site whose whole argument
+is that claims are checkable, confident-and-wrong is the worst possible copy. It now
+computes haversine distance and bearing to the nearest of thirty-odd landmarks, so it says
+"500 km south of Accra" — a smaller claim, and a true one. It is also a better sentence.
+
+**Extract from where the bits actually are.** Bitcoin's leading zeros are the proof of work
+and simultaneously the *least* useful bytes in the hash, being identical in every block. The
+source reads the hash from the far end. For the Class C feeds, the headline event is the
+story but the entropy is in the tail: the seismic source hashes the whole hour of
+microquakes, not just the largest one.
 
 ## 2. Entropy quality, honestly
 

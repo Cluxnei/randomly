@@ -57,7 +57,7 @@ filling in the registry.
   `audio.pluck` (Karplus–Strong)
 - Offline render → WAV export
 
-## Phase 6 — The marketing surface (1 day)
+## Phase 6 — The marketing surface ✅ done
 
 - Landing page: hero canvas, live entropy ticker, how-it-works SVG
 - `/entropy` dashboard

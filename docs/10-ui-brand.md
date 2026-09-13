@@ -123,6 +123,29 @@ the receipt line, a PNG (patterns/images), a WAV (audio), a printable worksheet
 each export — an exported image carries the sentence *"Generated from NIST Beacon pulse
 #1937618"* in its corner. Every share is an advertisement that explains the product.
 
+## 5.1 The Open Graph card
+
+Every permalink previews as a real card, rendered server-side with GD at 1200×630 and
+cached by a content hash of what it draws.
+
+**It does not try to redraw a canvas generator's artwork.** That renderer exists only in
+JavaScript, and a second implementation in PHP would drift from it — quietly, and in a
+place nobody looks. The card is typographic instead: the result's own `display` string set
+large in mono, auto-sized down a ladder until it fits, the receipt sentence beneath it,
+the palette as a colour strip when there is one.
+
+**The receipt sentence travels in the link, signed.** A replayed receipt can only be
+rebuilt from a source key and a reference, which turns *"A magnitude 3.6 earthquake, 67 km
+N of Culebra, Puerto Rico, 39.6 km down"* into *"Originally drawn from USGS Seismic Feed
+(us7000th33)"*. The vivid sentence is the product, and the shared card is where it reaches
+the most people — so the original rides along in the URL.
+
+It rides **signed**, with an HMAC over the app key. Letting a URL parameter put arbitrary
+text on a card bearing the Randomly wordmark would be building a forgery generator, and
+"it is only a preview image" is no defence: the preview is what most people ever see of a
+link. An unsigned or altered narrative is dropped silently and the card falls back to the
+reconstructed sentence — a crawler still gets a correct card, just a plainer one.
+
 ## 6. Accessibility, briefly
 
 Contrast pairs validated by the same OKLCH engine that generates palettes (so the tool

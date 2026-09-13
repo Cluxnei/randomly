@@ -54,4 +54,19 @@ final class PageController extends Controller
             'sources' => $this->pool->status(),
         ]);
     }
+
+    /**
+     * Who we owe.
+     *
+     * The source list comes from the live pool rather than a hand-kept list, so
+     * wiring a new source credits it the same day it starts answering — the one
+     * way a credits page can be wrong that nobody would ever notice.
+     */
+    public function credits(): View
+    {
+        return view('pages.credits', [
+            'sources' => $this->pool->status(),
+            'generators' => $this->registry->all()->count(),
+        ]);
+    }
 }

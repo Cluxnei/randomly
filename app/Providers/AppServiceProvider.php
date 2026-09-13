@@ -8,6 +8,7 @@ use App\Random\Entropy\Contracts\EntropySource;
 use App\Random\Entropy\EntropyPool;
 use App\Random\GeneratorRegistry;
 use App\Random\Generators\Contracts\Generator;
+use App\Random\Og\OgImage;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
@@ -53,6 +54,15 @@ class AppServiceProvider extends ServiceProvider
 
             return new GeneratorRegistry($generators);
         });
+
+        /*
+         * The share-card renderer needs to be told where its typeface lives, and
+         * that is a deployment fact rather than something the class should go
+         * looking for. JetBrains Mono is bundled rather than fetched: a card is
+         * drawn inside the request that serves it, and a font over the network
+         * would put a third party in that path.
+         */
+        $this->app->singleton(OgImage::class, fn (): OgImage => new OgImage(resource_path('fonts')));
     }
 
     /**

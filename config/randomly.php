@@ -2,10 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Random\Entropy\Sources\AnuQrngSource;
+use App\Random\Entropy\Sources\AtmosphereSource;
+use App\Random\Entropy\Sources\BitcoinSource;
 use App\Random\Entropy\Sources\CsprngSource;
 use App\Random\Entropy\Sources\DrandSource;
+use App\Random\Entropy\Sources\IssSource;
 use App\Random\Entropy\Sources\NistBeaconSource;
 use App\Random\Entropy\Sources\RandomOrgSource;
+use App\Random\Entropy\Sources\SeismicSource;
+use App\Random\Entropy\Sources\SpaceWeatherSource;
 use App\Random\Generators\Audio\ChordGenerator;
 use App\Random\Generators\Audio\MelodyGenerator;
 use App\Random\Generators\Audio\NoiseGenerator;
@@ -51,10 +57,19 @@ return [
          * the CSPRNG first because it is the floor everything else rests on.
          */
         'sources' => [
+            // Ordered by how much they can be trusted, not by how good the story
+            // is: Class A first, so /entropy reads top to bottom as strongest to
+            // most decorative.
             CsprngSource::class,
+            AnuQrngSource::class,
             RandomOrgSource::class,
             NistBeaconSource::class,
             DrandSource::class,
+            BitcoinSource::class,
+            SeismicSource::class,
+            SpaceWeatherSource::class,
+            AtmosphereSource::class,
+            IssSource::class,
         ],
 
         /*

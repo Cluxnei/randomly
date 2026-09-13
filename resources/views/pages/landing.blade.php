@@ -42,10 +42,10 @@
          the API uses, on this request. The sentence below names the source it
          actually came from. --}}
     <section class="relative isolate overflow-hidden border-b border-line">
-        {{-- images.flowfield, grown over about forty frames so the page paints
-             first and the picture arrives after it. The one moving canvas on the
-             site; under prefers-reduced-motion it is completed in a single pass
-             and simply appears. --}}
+        {{-- images.flowfield, grown a step at a time over a couple of seconds so the
+             page paints first and the picture arrives after it — then it stops. The
+             one moving canvas on the site; under prefers-reduced-motion it is
+             completed in a single pass and simply appears. --}}
         <canvas id="hero-canvas"
                 x-data="heroFlowField(@js($heroCanvas))"
                 width="{{ $heroCanvas['value']['width'] ?? 1280 }}"
@@ -151,7 +151,8 @@
             </ul>
         </div>
         <p class="mx-auto max-w-7xl border-t border-line px-6 py-2 font-mono text-[0.65rem] text-muted">
-            Values appear as each source gets drawn from. Nothing is fetched merely to fill this strip
+            Values appear as each source gets drawn from. Nothing is fetched merely to fill this strip ·
+            <a href="{{ route('entropy') }}" class="text-signal hover:underline">what each one is worth →</a>
             <span x-show="failed" x-cloak class="text-warn">· the ticker lost its connection and is showing its last known values</span>
         </p>
     </section>
@@ -162,8 +163,10 @@
             <div>
                 <h2 class="text-3xl font-semibold tracking-tighter sm:text-4xl">Pick what you want to be random.</h2>
                 <p class="mt-3 max-w-xl text-muted">
-                    Six modules are specified; {{ $counts['generators'] }} generators are built. Cards below
-                    separate the two, because a catalogue that counts unwritten code is just a wishlist.
+                    {{ $liveModules }} of {{ $counts['modules'] }} modules have something live in them:
+                    {{ $counts['generators'] }} generators built, {{ $plannedCount }} more specified and not
+                    written. The cards below keep the two apart, because a catalogue that counts unwritten
+                    code is just a wishlist.
                 </p>
             </div>
             <a href="{{ route('library') }}" class="text-sm text-signal hover:underline">
@@ -207,8 +210,15 @@
                         </ul>
                     @endif
 
+                    {{-- Equations has nothing left on the roadmap, and "0 planned ·" followed
+                         by an empty list reads as a rendering bug rather than as the good news
+                         it is. --}}
                     <p class="mt-auto font-mono text-[0.65rem] leading-relaxed text-muted num">
-                        {{ $planned->count() }} planned · {{ $planned->take(3)->pluck('name')->implode(' · ') }}@if ($planned->count() > 3) · …@endif
+                        @if ($planned->isEmpty())
+                            everything specified for this module is built
+                        @else
+                            {{ $planned->count() }} planned · {{ $planned->take(3)->pluck('name')->implode(' · ') }}@if ($planned->count() > 3) · …@endif
+                        @endif
                     </p>
                 </li>
             @endforeach
@@ -228,10 +238,12 @@
                     <p class="font-mono text-xs text-signal num">01</p>
                     <h3 class="mt-3 text-lg font-medium tracking-tight">Collect</h3>
                     <p class="mt-3 text-sm leading-relaxed text-muted">
-                        {{ $counts['sources'] }} free, keyless sources, from the kernel's own pool to radio
-                        noise, a signed government beacon and a threshold signature network. Every call has a
-                        timeout and a circuit breaker; when one misses we fall back to the OS CSPRNG and mark
-                        the receipt <span class="font-mono text-warn">degraded</span> rather than pretending.
+                        {{ $counts['sources'] }} free, keyless sources: the kernel's own pool, a quantum
+                        optics bench in Canberra, atmospheric radio noise, a signed government beacon, a
+                        threshold signature network, ten minutes of global Bitcoin hashrate, and every
+                        earthquake on Earth in the last hour. Every call has a timeout and a circuit breaker;
+                        when one misses we fall back to the OS CSPRNG and mark the receipt
+                        <span class="font-mono text-warn">degraded</span> rather than pretending.
                     </p>
                 </li>
 
