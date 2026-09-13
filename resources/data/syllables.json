@@ -1,0 +1,79 @@
+{
+  "_comment": "Syllable grammars for words.syllabic and words.brand. A word is syllable{2,4}; a syllable is onset? nucleus coda?. Flavours are pure weight tables, so adding one is a JSON edit and no PHP change. Weights are relative within their own table, never probabilities, so a table can be tuned by nudging one number without renormalising the rest. The empty string key means 'nothing here' — a bare nucleus for onset, an open syllable for coda. The 'final' block decides how the last syllable closes: 'coda' uses a separate (usually heavier) coda table, 'open' forces a vowel ending, 'suffix' replaces the last nucleus+coda with a fixed ending such as -us or -um.",
+  "flavours": {
+    "elvish": {
+      "label": "Elvish",
+      "note": "Liquids, open syllables and no hard stops — the sound is carried by l, r, th and long vowels.",
+      "onset": {
+        "": 3, "l": 4, "r": 3, "n": 3, "m": 3, "th": 4, "s": 3, "v": 3, "f": 2,
+        "c": 2, "g": 2, "gl": 2, "thr": 2, "br": 1, "dr": 1, "h": 2, "y": 1
+      },
+      "nucleus": {
+        "a": 4, "e": 4, "i": 4, "o": 3, "u": 2, "ae": 3, "ai": 3, "ea": 3, "ie": 2, "io": 2, "ee": 1
+      },
+      "coda": {
+        "": 16, "l": 4, "n": 4, "r": 4, "th": 2, "s": 2, "ll": 1, "nd": 1
+      },
+      "final": {
+        "mode": "coda",
+        "weights": { "": 5, "l": 4, "n": 4, "r": 3, "th": 2, "s": 2, "ss": 1, "nn": 1 }
+      }
+    },
+    "nordic": {
+      "label": "Nordic",
+      "note": "Consonant clusters, hard k and g, and the Scandinavian vowels ø and å.",
+      "onset": {
+        "": 1, "b": 2, "bj": 1, "d": 2, "f": 2, "fj": 1, "g": 3, "gr": 2, "h": 2, "hj": 1,
+        "j": 2, "k": 3, "kn": 1, "kr": 2, "l": 2, "m": 2, "n": 2, "r": 2, "s": 2, "sk": 2,
+        "sn": 1, "st": 2, "sv": 1, "t": 2, "th": 2, "tr": 2, "v": 2
+      },
+      "nucleus": {
+        "a": 4, "e": 3, "i": 3, "o": 3, "u": 2, "y": 2, "au": 1, "ei": 2, "ja": 1, "jo": 1, "ø": 2, "å": 2
+      },
+      "coda": {
+        "": 8, "n": 4, "r": 4, "l": 3, "k": 3, "s": 3, "st": 2, "nd": 2, "ng": 2, "rk": 2, "ld": 1, "rn": 1
+      },
+      "final": {
+        "mode": "coda",
+        "weights": { "": 2, "r": 4, "n": 4, "k": 3, "s": 3, "st": 2, "nd": 2, "rk": 2, "dal": 2, "vik": 2, "berg": 1, "fjord": 1 }
+      }
+    },
+    "brand": {
+      "label": "Brand",
+      "note": "Two open syllables ending in a vowel — the shape every startup name has had since 2010.",
+      "onset": {
+        "": 1, "b": 3, "br": 2, "d": 3, "f": 2, "fl": 2, "g": 2, "gr": 2, "h": 1, "j": 1,
+        "k": 3, "kl": 1, "l": 3, "m": 3, "n": 3, "p": 2, "pr": 1, "r": 3, "s": 3, "sl": 1,
+        "st": 2, "t": 3, "tr": 2, "v": 3, "z": 2
+      },
+      "nucleus": {
+        "a": 6, "e": 5, "i": 5, "o": 5, "u": 3, "ai": 2, "ea": 2, "io": 1
+      },
+      "coda": {
+        "": 16, "l": 3, "n": 3, "r": 2, "m": 2, "s": 1
+      },
+      "final": {
+        "mode": "open"
+      }
+    },
+    "latin": {
+      "label": "Latin",
+      "note": "Classical shapes closed with -us, -a or -um, the way half of taxonomy and all of pharma name things.",
+      "onset": {
+        "": 2, "c": 3, "cl": 1, "cr": 2, "d": 3, "f": 2, "g": 2, "gr": 2, "l": 3, "m": 3,
+        "n": 3, "p": 3, "pl": 1, "pr": 2, "qu": 1, "r": 2, "s": 3, "sp": 1, "st": 2,
+        "t": 3, "tr": 2, "v": 3
+      },
+      "nucleus": {
+        "a": 5, "e": 4, "i": 4, "o": 3, "u": 3, "ae": 2, "au": 1, "ia": 1
+      },
+      "coda": {
+        "": 14, "l": 2, "m": 1, "n": 3, "r": 3, "s": 2, "nt": 1
+      },
+      "final": {
+        "mode": "suffix",
+        "weights": { "us": 5, "a": 4, "um": 3, "is": 2, "or": 2, "ia": 2, "ax": 1, "ex": 1, "ina": 2, "ius": 1 }
+      }
+    }
+  }
+}

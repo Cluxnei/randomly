@@ -1,0 +1,64 @@
+{
+  "_comment": "Vocabularies for words.lorem. 'words' is the content pool; 'connectives' are the short function words that make a run of nouns read as prose instead of as a list, drawn at 'connective_rate' and never twice in a row. Latin needs no connectives table because the classical lorem vocabulary already contains its own (et, in, ut, sed, qui). The markov flavour builds its vocabulary at runtime and appears nowhere in this file.",
+  "flavours": {
+    "latin": {
+      "label": "Latin",
+      "opening": "lorem ipsum dolor sit amet, consectetur adipiscing elit",
+      "connective_rate": 0,
+      "connectives": [],
+      "words": [
+        "a", "ac", "accumsan", "ad", "aenean", "aliquam", "aliquet", "amet", "ante", "arcu",
+        "at", "auctor", "augue", "bibendum", "blandit", "commodo", "condimentum", "congue",
+        "consectetur", "consequat", "convallis", "cras", "cubilia", "cursus", "dapibus",
+        "diam", "dictum", "dignissim", "dolor", "donec", "dui", "duis", "egestas", "eget",
+        "eleifend", "elementum", "elit", "enim", "erat", "eros", "est", "et", "etiam", "eu",
+        "euismod", "facilisis", "fames", "faucibus", "felis", "fermentum", "feugiat",
+        "finibus", "fringilla", "fusce", "gravida", "habitant", "hendrerit", "iaculis", "id",
+        "imperdiet", "in", "integer", "interdum", "ipsum", "justo", "lacinia", "lacus",
+        "laoreet", "lectus", "leo", "libero", "ligula", "lobortis", "lorem", "luctus",
+        "maecenas", "magna", "magnis", "malesuada", "massa", "mattis", "mauris", "maximus",
+        "metus", "mi", "molestie", "mollis", "morbi", "nam", "nec", "neque", "netus", "nibh",
+        "nisi", "nisl", "non", "nulla", "nullam", "nunc", "odio", "orci", "ornare", "pede",
+        "pellentesque", "pharetra", "phasellus", "placerat", "porta", "porttitor", "posuere",
+        "potenti", "praesent", "pretium", "primis", "proin", "pulvinar", "purus", "quam",
+        "quis", "quisque", "rhoncus", "risus", "rutrum", "sagittis", "sapien", "scelerisque",
+        "sed", "sem", "semper", "senectus", "sit", "sodales", "sollicitudin", "suscipit",
+        "suspendisse", "tellus", "tempor", "tempus", "tincidunt", "torquent", "tortor",
+        "tristique", "turpis", "ullamcorper", "ultrices", "ultricies", "urna", "ut", "varius",
+        "vehicula", "vel", "velit", "venenatis", "vestibulum", "vitae", "vivamus", "viverra",
+        "volutpat", "vulputate"
+      ]
+    },
+    "tech": {
+      "label": "Tech",
+      "opening": null,
+      "connective_rate": 0.34,
+      "connectives": [
+        "the", "a", "an", "of", "and", "to", "with", "for", "in", "on", "at", "from",
+        "that", "which", "into", "across", "without", "before", "while", "our", "your",
+        "every", "any", "each", "these", "its"
+      ],
+      "words": [
+        "pipeline", "runtime", "cluster", "endpoint", "payload", "schema", "cache", "queue",
+        "worker", "shard", "index", "token", "handshake", "checkpoint", "artifact", "manifest",
+        "namespace", "container", "daemon", "socket", "buffer", "throughput", "latency",
+        "backpressure", "idempotency", "observability", "telemetry", "instrumentation",
+        "orchestration", "provisioning", "replication", "failover", "rollback", "migration",
+        "deployment", "rollout", "canary", "regression", "benchmark", "profiler", "allocator",
+        "compiler", "linker", "resolver", "scheduler", "dispatcher", "listener", "emitter",
+        "middleware", "gateway", "proxy", "mesh", "topology", "consensus", "quorum", "ledger",
+        "checksum", "digest", "signature", "certificate", "credential", "session", "cursor",
+        "snapshot", "journal", "compaction", "partition", "region", "zone", "tenant",
+        "quota", "throttle", "retry", "backoff", "timeout", "heartbeat", "watchdog",
+        "ingest", "transform", "aggregate", "materialise", "denormalise", "serialise",
+        "hydrate", "reconcile", "converge", "propagate", "invalidate", "evict", "warm",
+        "cold", "durable", "ephemeral", "immutable", "eventual", "atomic", "isolated",
+        "distributed", "asynchronous", "declarative", "idempotent", "stateless", "resilient",
+        "elastic", "observable", "composable", "portable", "deterministic", "reproducible",
+        "granular", "coarse", "upstream", "downstream", "inbound", "outbound", "edge",
+        "core", "surface", "boundary", "contract", "invariant", "tradeoff", "budget",
+        "footprint", "overhead", "ceiling", "floor", "baseline", "tail", "percentile"
+      ]
+    }
+  }
+}
