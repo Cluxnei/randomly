@@ -77,6 +77,17 @@ Two of them are arguments rather than decoration:
 </tr>
 </table>
 
+<table>
+<tr>
+<td width="50%"><img src="docs/media/walk.png" alt="Three random walks side by side: a dense compact cloud, the same cloud with long straight jumps across it, and a space-filling path that never crosses itself"></td>
+<td width="50%"><img src="docs/media/strata.png" alt="Horizontal bands in purple and orange with irregular edges, reading as geological layers or a stylised sunset"></td>
+</tr>
+<tr>
+<td><b>Brownian, Lévy, self-avoiding</b> — the same number of steps. The long straight jumps in the middle panel are a Lévy flight's heavy tail, and they are why it explores ground Brownian motion never reaches.</td>
+<td><b>Strata</b> — band heights from a Dirichlet draw, edges perturbed by noise, colours walking one palette. No photograph involved.</td>
+</tr>
+</table>
+
 And `numbers.coordinates` renders the classic sphere-sampling bug side by side.
 Above 60° of latitude lies 13.4% of the Earth. The correct sampler put **14.0%**
 of its points there; sampling latitude uniformly put **35.9%** — because it gives
