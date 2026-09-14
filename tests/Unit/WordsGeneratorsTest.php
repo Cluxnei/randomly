@@ -6,9 +6,11 @@ use App\Random\Generators\Contracts\NeedsData;
 use App\Random\Generators\Words\ArticleGenerator;
 use App\Random\Generators\Words\BrandGenerator;
 use App\Random\Generators\Words\Corpus;
+use App\Random\Generators\Words\IdentityGenerator;
 use App\Random\Generators\Words\LoremGenerator;
 use App\Random\Generators\Words\PassphraseGenerator;
 use App\Random\Generators\Words\PseudoWordsGenerator;
+use App\Random\Generators\Words\RelatedGenerator;
 use App\Random\Generators\Words\SpeciesGenerator;
 use App\Random\Generators\Words\SyllabicGenerator;
 use App\Random\Generators\Words\SyllableGrammar;
@@ -304,7 +306,7 @@ it('lets the seed do the choosing, not the API', function (string $class): void 
 
     expect(json_encode($a->value))->not->toBe(json_encode($b->value))
         ->and(count($pool['pool']))->toBeGreaterThanOrEqual(8);
-})->with([ArticleGenerator::class, SpeciesGenerator::class]);
+})->with([ArticleGenerator::class, SpeciesGenerator::class, RelatedGenerator::class, IdentityGenerator::class]);
 
 it('promises no permalink for a generator built on live material', function (string $class): void {
     $generator = new $class;
@@ -314,7 +316,7 @@ it('promises no permalink for a generator built on live material', function (str
     expect($generator)->toBeInstanceOf(NeedsData::class)
         ->and($generator->isReproducible())->toBeFalse()
         ->and($generator->cacheSeconds())->toBeGreaterThan(0);
-})->with([ArticleGenerator::class, SpeciesGenerator::class]);
+})->with([ArticleGenerator::class, SpeciesGenerator::class, RelatedGenerator::class, IdentityGenerator::class]);
 
 it('renders something worth reading when the API is down', function (string $class, array $keys): void {
     $generator = new $class;
@@ -338,6 +340,8 @@ it('renders something worth reading when the API is down', function (string $cla
 })->with([
     [ArticleGenerator::class, ['title', 'extract', 'url']],
     [SpeciesGenerator::class, ['name', 'lineage']],
+    [RelatedGenerator::class, ['word', 'score']],
+    [IdentityGenerator::class, ['name', 'location', 'email']],
 ]);
 
 it('never asks for more items than the pool can give', function (string $class): void {
@@ -348,4 +352,85 @@ it('never asks for more items than the pool can give', function (string $class):
 
     expect(count($result->value))->toBeLessThanOrEqual($result->meta['pool_size'])
         ->and($result->value)->not->toBeEmpty();
-})->with([ArticleGenerator::class, SpeciesGenerator::class]);
+})->with([ArticleGenerator::class, SpeciesGenerator::class, RelatedGenerator::class, IdentityGenerator::class]);
+
+// ----------------------------------------------- words.related, words.identity
+
+it('says which of “nothing found” and “API down” actually happened', function (): void {
+    /*
+     * Nothing rhymes with orange, and that is Datamuse answering rather than
+     * Datamuse failing. The first version of this generator threw on an empty
+     * result, so the page told the reader the API was unreachable when it had in
+     * fact replied instantly and correctly — a false statement about provenance,
+     * which is the one class of bug this project cannot ship.
+     */
+    $withReason = wordsResult(RelatedGenerator::class, ['count' => 3], 'randomly-fixed!!', [
+        'degraded' => true,
+        'reason' => 'Datamuse knows no “rhymes with” neighbours for “orange” — that is its answer, not an outage.',
+        ...(new RelatedGenerator)->fallback(),
+    ]);
+
+    $outage = wordsResult(RelatedGenerator::class, ['count' => 3]);
+
+    expect($withReason->display)->toContain('not an outage')
+        ->and($withReason->meta['degraded'])->toBeTrue()
+        ->and($outage->display)->toContain('unreachable')
+        ->and($outage->display)->not->toContain('not an outage');
+});
+
+it('counts only the choice it made, never the pool it was handed', function (): void {
+    // Forty candidates, eight drawn: log2(40) + log2(39) + … Anything larger
+    // would be crediting the beacon with Datamuse's editorial judgement.
+    $pool = array_map(fn (int $i): array => ['word' => 'w'.$i, 'score' => 1000 - $i, 'syllables' => 2], range(1, 40));
+    $result = wordsResult(RelatedGenerator::class, ['count' => 8], 'randomly-fixed!!', ['pool' => $pool]);
+
+    $expected = 0.0;
+    for ($i = 0; $i < 8; $i++) {
+        $expected += log(40 - $i, 2);
+    }
+
+    expect($result->meta['entropy_out_bits'])->toEqualWithDelta($expected, 0.01)
+        ->and($result->meta['pool_size'])->toBe(40)
+        ->and($result->value)->toHaveCount(8);
+});
+
+it('never lets a fictional person be mistaken for a real one', function (): void {
+    /*
+     * The rule that decides what this generator is allowed to produce. A list of
+     * plausible names, ages and cities is indistinguishable from a leaked export
+     * once it has been copied off the page, so the label travels with the data —
+     * and the fields that would make a fake person impersonate a real one are
+     * never requested at all.
+     */
+    $result = wordsResult(IdentityGenerator::class, ['count' => 6]);
+
+    expect($result->display)->toContain('FICTIONAL')
+        ->and($result->display)->toContain('do not exist')
+        ->and($result->meta['fictional'])->toBeTrue();
+
+    foreach ($result->value as $person) {
+        expect($person['fictional'])->toBeTrue()
+            // A photograph of a real person on an invented name is impersonation;
+            // a well-formed phone number or national ID can collide with somebody
+            // real. None of the four is in the output because none is fetched.
+            ->and($person)->not->toHaveKey('picture')
+            ->and($person)->not->toHaveKey('phone')
+            ->and($person)->not->toHaveKey('login')
+            ->and($person)->not->toHaveKey('id')
+            // RFC 2606 reserves example.com precisely so that test data cannot
+            // reach an inbox. Anything else is dropped rather than printed.
+            ->and($person['email'])->toEndWith('@example.com');
+    }
+});
+
+it('keeps every fictional person inside one locale', function (): void {
+    // "Hiroshi Tanaka, Lyon" is a person from a badly written form. The whole
+    // point of the nationality control is that the name and the place come from
+    // the same place, and the bundled fallback has to honour that too.
+    foreach ((new IdentityGenerator)->fallback()['pool'] as $person) {
+        expect($person['location'])->toContain(',')
+            ->and($person['name'])->not->toBeEmpty()
+            ->and($person['age'])->toBeGreaterThan(17)
+            ->and($person['age'])->toBeLessThan(90);
+    }
+});

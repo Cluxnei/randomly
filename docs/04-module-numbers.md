@@ -59,6 +59,28 @@ full 64-bit product `x × n` of a 32-bit draw, and PHP's only integer type is a 
 quietly stops being uniform — the exact bug this method exists to prevent. Bitmask
 rejection never multiplies, so it has no such ceiling.
 
+**The mask stops being an integer at 63 bits.** `1 << 63` is `PHP_INT_MIN`, and
+subtracting one from it promotes the expression to a *double* — after which `$v & $mask`
+converts back in a way that masks nothing at all. Measured on a 63-bit range: **272 draws
+in 500 landed outside the requested bounds**, with no error and no warning.
+
+It was reached by Miller–Rabin picking witnesses over `[2, n−2]`, not by anything
+contrived. The generator still emitted primes — the witnesses were merely garbage, so the
+test was weaker than advertised and the search ran 2.7× slower than the prime number
+theorem allows. A bug that degrades a guarantee without breaking output is the hardest
+kind to notice.
+
+The fix is `$bits >= 63 ? PHP_INT_MAX : (1 << $bits) - 1` — `PHP_INT_MAX` *is* 2⁶³−1, so at
+that width it is exactly the mask wanted. An earlier guard here checked the *range* against
+`PHP_INT_MAX`, which was the wrong quantity entirely: the mask breaks at 63 bits, and a
+range need only exceed 2⁶² to get there.
+
+**And the subtraction itself can escape twice over.** A range that wraps comes back
+negative; one that exceeds `PHP_INT_MAX` outright promotes to a float — `PHP_INT_MIN` to
+`PHP_INT_MAX` is 2⁶⁴−1 and arrives as `1.8446744073709552E+19`, which is not negative and
+would sail straight past a sign check. Both paths are now guarded, and the test sweeps
+every bit width from 1 to 63 rather than trusting the interesting ones to be obvious.
+
 Rejection rate is at most 50% and is usually far lower. `meta.rejections` is surfaced in
 the UI, and it teaches better than Lemire would have: a 1–100 range needs 7 bits and
 therefore discards 28 of every 128 draws, about 22%. Watching a fifth of the draws get

@@ -18,13 +18,16 @@
  */
 import { Rng } from '../rng.js'
 import { limit } from './dsp.js'
+import { render as ambient } from './ambient.js'
+import { render as bleep } from './bleep.js'
 import { render as chord } from './chord.js'
+import { render as drone } from './drone.js'
 import { render as melody } from './melody.js'
 import { render as noise } from './noise.js'
 import { render as pluck } from './pluck.js'
 import { render as rhythm } from './rhythm.js'
 
-const ENGINES = { noise, rhythm, melody, pluck, chord }
+const ENGINES = { noise, rhythm, melody, pluck, chord, drone, bleep, ambient }
 
 /**
  * How much HKDF stream a render derives.

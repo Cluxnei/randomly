@@ -15,6 +15,7 @@ use App\Random\Studio\VersionChanged;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -157,6 +158,22 @@ final class ApiController extends Controller
 
     private function file(Generation $generation, string $format): JsonResponse|BinaryFileResponse
     {
+        // Charged here rather than as route middleware: one route serves JSON, text,
+        // PNG and WAV depending on what was asked for, and only the last two start a
+        // Node process. A caller pulling JSON should not spend the render budget.
+        $key = 'randomly-media:'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($key, (int) config('randomly.limits.media_per_minute', 20))) {
+            return response()->json([
+                'error' => 'rate_limited',
+                'message' => 'Rendering is the expensive endpoint and has its own, smaller allowance.',
+                'retry_after_seconds' => RateLimiter::availableIn($key),
+                'limits' => ['renders_per_minute' => (int) config('randomly.limits.media_per_minute', 20)],
+            ], 429, ['Retry-After' => RateLimiter::availableIn($key)]);
+        }
+
+        RateLimiter::hit($key, 60);
+
         try {
             $path = $this->media->render($generation, $format);
         } catch (MediaUnavailable $e) {

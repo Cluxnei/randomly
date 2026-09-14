@@ -37,7 +37,11 @@
 {{-- The count is read from the pool rather than typed, like every other number
      on this site. A hardcoded "ten" in a share description is exactly the kind of
      number that is right the day it is written and wrong a month later. --}}
-<x-layout :og="[
+<x-layout :breadcrumbs="[
+              ['name' => 'Randomly', 'url' => route('home')],
+              ['name' => 'Entropy', 'url' => route('entropy')],
+          ]"
+          :og="[
     'title' => 'Entropy · Randomly',
     'description' => count($sources) . ' live entropy sources, classified A to C, each with what it is honestly worth.',
 ]">

@@ -291,3 +291,85 @@ it('renders in the browser faster than the piece takes to play', function (Gener
     expect($measured['render_ms'] / 1000)->toBeLessThan($measured['duration'])
         ->and($measured['duration'])->toBeGreaterThan(0.5);
 })->with(audioGenerators());
+
+it('holds a drone on the note it says it is holding', function (string $root, int $octave): void {
+    /*
+     * A drone is the one signal here where pitch and *persistence* are the whole
+     * claim, so both get measured. The fundamental comes from autocorrelation on
+     * the rendered samples, not from the score that produced them.
+     *
+     * This test is why the analyser's pitch detector now takes the earliest local
+     * *maximum* of the correlation rather than the earliest lag over 90% of the
+     * best: around a peak the curve is broad, and a 110 Hz drone crossed the old
+     * threshold at lag 376 on its way to its actual maximum at 400 — reported as
+     * 117 Hz, which reads like a synthesis bug and was a measurement one.
+     */
+    $score = audioScore('audio.drone', ['root' => $root, 'octave' => $octave, 'partials' => 5, 'duration' => 12.0]);
+    $measured = scoreMeasurement($score);
+
+    // One percent, which is a sixth of a semitone. The beating detunings are a
+    // few cents at these rates, so there is real spread to allow for and not much.
+    expect($measured['fundamental_hz'])->toEqualWithDelta($score['root_hz'], $score['root_hz'] * 0.015)
+        // And it has to still be sounding at the end. The bound is loose on
+        // purpose: the decay ratio compares the last tenth of the piece against
+        // the first, and both of those sit inside the four-second equal-power
+        // fades — so what this actually rules out is a drone that has stopped,
+        // which is the failure worth catching. A pluck's ratio here is 0.07.
+        ->and($measured['decay_ratio'])->toBeGreaterThan(0.25)
+        ->and($measured['rms'])->toBeGreaterThan(0.01)
+        ->and($measured['peak'])->toBeLessThanOrEqual(0.9);
+})->with([
+    ['A', 2],
+    ['D', 2],
+    ['C', 3],
+]);
+
+it('starts every UI sound exactly where the pack says it does', function (): void {
+    /*
+     * The offsets in the meta are an instruction — "cut here" — so they are
+     * checked against the samples rather than against the score that wrote them.
+     * An envelope with the wrong attack, a voice scheduled relative to the wrong
+     * origin or a gap applied before the sound instead of after would all leave
+     * the score looking perfect and the file unsliceable.
+     */
+    $score = audioScore('audio.bleep', ['count' => 6]);
+    $measured = scoreMeasurement($score)['onsets'];
+
+    foreach ($score['sounds'] as $sound) {
+        $nearest = null;
+
+        foreach ($measured as $onset) {
+            if ($nearest === null || abs($onset - $sound['start']) < abs($nearest - $sound['start'])) {
+                $nearest = $onset;
+            }
+        }
+
+        // Five milliseconds. The detector works on 32-sample frames, so its own
+        // resolution is 0.7 ms, and an attack takes a frame or two to clear the
+        // threshold.
+        expect($nearest)->toEqualWithDelta($sound['start'], 0.005, sprintf(
+            'the %s at %.3f s has no onset within 5 ms (nearest %.3f s)',
+            $sound['kind'],
+            $sound['start'],
+            $nearest ?? -1,
+        ));
+    }
+
+    // And silence between them: a pack whose sounds run together cannot be cut
+    // apart, whatever the offsets claim.
+    expect(count($measured))->toBeGreaterThanOrEqual(count($score['sounds']));
+});
+
+it('keeps an ambient piece alive from end to end', function (string $mood): void {
+    // The failure mode here is a piece that is mostly silence — pads too sparse,
+    // motes too quiet, a bed filtered into nothing — which would pass every
+    // structural test next door and be an empty file.
+    $measured = scoreMeasurement(audioScore('audio.ambient', ['mood' => $mood, 'duration' => 30.0]));
+
+    expect($measured['rms'])->toBeGreaterThan(0.01)
+        ->and($measured['peak'])->toBeLessThanOrEqual(0.9)
+        // Still sounding at the end, allowing for the three-second fade that
+        // makes the loop point inaudible.
+        ->and($measured['decay_ratio'])->toBeGreaterThan(0.25)
+        ->and($measured['duration'])->toEqualWithDelta(30.0, 0.01);
+})->with(['glacier', 'dusk', 'rainfall', 'orbit']);

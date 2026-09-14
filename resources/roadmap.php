@@ -15,41 +15,5 @@ declare(strict_types=1);
  */
 
 return [
-    'numbers' => [
-        ['key' => 'numbers.decimals', 'name' => 'Decimals', 'tagline' => 'Floats in a range, at a precision you choose.'],
-        ['key' => 'numbers.distribution', 'name' => 'Distribution Lab', 'tagline' => 'Poisson, Pareto, Zipf, Beta, Cauchy — sampled and plotted.'],
-        ['key' => 'numbers.coin', 'name' => 'Coin Flips', 'tagline' => 'Biased or fair, showing the longest run against the expected log₂ n.'],
-        ['key' => 'numbers.bytes', 'name' => 'Raw Bytes', 'tagline' => 'The entropy itself, in hex, base64 or binary.'],
-        ['key' => 'numbers.prime', 'name' => 'Primes', 'tagline' => 'Miller–Rabin, forty rounds, at the bit width you ask for.'],
-        ['key' => 'numbers.timestamp', 'name' => 'Moments', 'tagline' => 'A random instant inside a window you define.'],
-    ],
 
-    'words' => [
-        ['key' => 'words.related', 'name' => 'Word Web', 'tagline' => 'Means-like, rhymes-with and sounds-like, via Datamuse.'],
-        ['key' => 'words.identity', 'name' => 'Fictional People', 'tagline' => 'Names that hold together across a nationality.'],
-    ],
-
-    'patterns' => [
-        ['key' => 'patterns.simplex', 'name' => 'Simplex Noise', 'tagline' => 'Fewer directional artefacts, cheaper in higher dimensions.'],
-        ['key' => 'patterns.spectral', 'name' => 'Spectral Noise', 'tagline' => '1/f^β synthesised in the frequency domain.'],
-        ['key' => 'patterns.life', 'name' => 'Life', 'tagline' => 'Conway from a random soup, with a density control.'],
-        ['key' => 'patterns.wfc', 'name' => 'Wave Function Collapse', 'tagline' => 'Overlapping model, min-entropy heuristic, backtracking.'],
-        ['key' => 'patterns.walk', 'name' => 'Random Walks', 'tagline' => 'Brownian, self-avoiding and Lévy — the fat tail is visible.'],
-        ['key' => 'patterns.dla', 'name' => 'Diffusion-Limited Aggregation', 'tagline' => 'Dendritic crystals, grown one sticky particle at a time.'],
-    ],
-
-    'images' => [
-        ['key' => 'images.circles', 'name' => 'Circle Packing', 'tagline' => 'Grow until collision, keep what fits.'],
-        ['key' => 'images.mondrian', 'name' => 'Mondrian', 'tagline' => 'Recursive subdivision, split at U(0.3, 0.7).'],
-        ['key' => 'images.gradient', 'name' => 'Mesh Gradient', 'tagline' => 'Random control points, dithered to kill the banding.'],
-        ['key' => 'images.spray', 'name' => 'Particle Spray', 'tagline' => 'A Gaussian mixture with k random components.'],
-        ['key' => 'images.tiles', 'name' => 'Glyph Grid', 'tagline' => 'A random glyph and rotation per cell.'],
-        ['key' => 'images.strata', 'name' => 'Strata', 'tagline' => 'Band heights from a Dirichlet draw, colours walking a palette.'],
-    ],
-
-    'audio' => [
-        ['key' => 'audio.drone', 'name' => 'Drone', 'tagline' => 'Detuned partials, beating slowly against each other.'],
-        ['key' => 'audio.bleep', 'name' => 'UI Sounds', 'tagline' => 'Success, error, notify, coin — as a downloadable pack.'],
-        ['key' => 'audio.ambient', 'name' => 'Generative Ambient', 'tagline' => 'A mood preset that evolves and never repeats.'],
-    ],
 ];

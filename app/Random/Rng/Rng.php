@@ -68,11 +68,13 @@ final class Rng
 
         $range = $hi - $lo;
 
-        // The mask below is built with a left shift, so a range wider than the
-        // signed 64-bit int cannot be drawn correctly. Unreachable through any
-        // declared schema, but failing loudly beats returning quiet garbage.
-        if ($range < 0 || $range >= PHP_INT_MAX) {
-            throw new \InvalidArgumentException("Range [{$lo}, {$hi}] is too wide to sample uniformly.");
+        // Two ways the subtraction escapes: a range that wraps past PHP_INT_MAX
+        // comes back negative, and one that exceeds it outright promotes to a
+        // float — PHP_INT_MIN to PHP_INT_MAX is 2^64−1 and arrives as
+        // 1.8446744073709552E+19, which is not negative and would sail past a
+        // sign check into a mask built from a float.
+        if (! is_int($range) || $range < 0) {
+            throw new \InvalidArgumentException("Range [{$lo}, {$hi}] overflows a signed 64-bit integer.");
         }
 
         $bits = 0;
@@ -80,7 +82,23 @@ final class Rng
             $bits++;
         }
         $bytes = intdiv($bits + 7, 8);
-        $mask = (1 << $bits) - 1;
+
+        /*
+         * At 63 bits the obvious mask stops being an integer.
+         *
+         * `1 << 63` is PHP_INT_MIN, and subtracting one from it promotes the whole
+         * expression to a double — after which `$v & $mask` converts that double
+         * back in a way that no longer masks anything. Measured on a 63-bit range:
+         * 272 draws out of 500 landed outside the requested bounds, silently.
+         *
+         * An earlier guard here tested the *range* against PHP_INT_MAX, which was
+         * the wrong quantity: the mask breaks at 63 bits, and a range needs only
+         * to exceed 2^62 to get there — far below the ceiling being checked.
+         * PHP_INT_MAX *is* 2^63 − 1, so at that width it is exactly the mask
+         * wanted. Nothing wider than 63 bits can be reached: a 64-bit range does
+         * not fit in a signed integer and is rejected above.
+         */
+        $mask = $bits >= 63 ? PHP_INT_MAX : (1 << $bits) - 1;
 
         while (true) {
             $v = 0;

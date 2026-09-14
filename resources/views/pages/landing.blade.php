@@ -36,7 +36,11 @@
     }
 @endphp
 
-<x-layout>
+<x-layout :og="[
+    'title' => 'Randomly · Randomness, sourced from reality.',
+    'description' => $counts['generators'] . ' random generators — numbers, words, equations, patterns, images and sound — seeded from '
+        . $counts['sources'] . ' real-world entropy sources. Every result ships with a receipt linking to third-party proof. Free API, no key.',
+]">
     {{-- ── Hero ───────────────────────────────────────────────────────────────
          Not a mockup: $hero is a real Generation, drawn through the same Studio
          the API uses, on this request. The sentence below names the source it
@@ -118,8 +122,11 @@
                         // Counts here are small and will stay small for a while, so they
                         // get pluralised properly. "1 modules shipping" on a page that
                         // sells itself on careful language is not a small mistake.
-                        ['value' => $counts['generators'], 'label' => Str::plural('generator', $counts['generators']).' live', 'sub' => $plannedCount.' more specified'],
-                        ['value' => $liveModules, 'label' => Str::plural('module', $liveModules).' shipping', 'sub' => 'of '.$counts['modules'].' planned'],
+                        // The roadmap emptied out when the last specified generator
+                        // shipped. "0 more specified" is a true statement that reads
+                        // like a bug, so the sub-label says what the zero means.
+                        ['value' => $counts['generators'], 'label' => Str::plural('generator', $counts['generators']).' live', 'sub' => $plannedCount > 0 ? $plannedCount.' more specified' : 'every one specified is built'],
+                        ['value' => $liveModules, 'label' => Str::plural('module', $liveModules).' shipping', 'sub' => $liveModules === $counts['modules'] ? 'all six' : 'of '.$counts['modules'].' planned'],
                         ['value' => $counts['sources'], 'label' => 'entropy '.Str::plural('source', $counts['sources']), 'sub' => 'wired and probed'],
                         ['value' => $counts['keys'], 'label' => Str::plural('API key', $counts['keys']), 'sub' => 'no signup, ever'],
                     ];
@@ -178,10 +185,17 @@
             <div>
                 <h2 class="text-3xl font-semibold tracking-tighter sm:text-4xl">Pick what you want to be random.</h2>
                 <p class="mt-3 max-w-xl text-muted">
-                    {{ $liveModules }} of {{ $counts['modules'] }} modules have something live in them:
-                    {{ $counts['generators'] }} generators built, {{ $plannedCount }} more specified and not
-                    written. The cards below keep the two apart, because a catalogue that counts unwritten
-                    code is just a wishlist.
+                    @if ($plannedCount > 0)
+                        {{ $liveModules }} of {{ $counts['modules'] }} modules have something live in them:
+                        {{ $counts['generators'] }} generators built, {{ $plannedCount }} more specified and not
+                        written. The cards below keep the two apart, because a catalogue that counts unwritten
+                        code is just a wishlist.
+                    @else
+                        {{ $counts['generators'] }} generators across all {{ $counts['modules'] }} modules, and
+                        nothing on this page is a promise — every generator the design documents specified is
+                        written and running. The catalogue never counted unwritten code, which is why the number
+                        took a while to get here.
+                    @endif
                 </p>
             </div>
             <a href="{{ route('library') }}" class="tap inline-flex items-center text-sm text-signal hover:underline">

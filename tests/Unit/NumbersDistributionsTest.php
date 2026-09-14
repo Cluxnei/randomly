@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Random\Generators\Contracts\Generator;
 use App\Random\Generators\Numbers\CoordinatesGenerator;
+use App\Random\Generators\Numbers\DistributionGenerator;
 use App\Random\Generators\Numbers\GaussianGenerator;
 use App\Random\Generators\Numbers\LotteryGenerator;
 use App\Random\Generators\Numbers\UuidGenerator;
+use App\Random\Numbers\Distributions;
 
 /**
  * The numbers generators that make a claim about a *distribution*, rather than
@@ -320,3 +322,180 @@ it('falls back to a fixed moment rather than a clock when the date is unparseabl
 
     expect($meta['first_moment'])->toBe('2026-01-01T00:00:00.000Z');
 })->with([['now'], ['tomorrow'], [''], ['2026-13-45'], ['not a date']]);
+
+// ── numbers.distribution ─────────────────────────────────────────────────────
+
+/**
+ * Pearson's χ² of a discrete sample against its own analytic PMF.
+ *
+ * Bins with an expected count under five are pooled into their neighbour, which
+ * is the standard rule: the χ² approximation to the sampling distribution breaks
+ * down in the tail, and a bin expecting 0.3 events contributes enormous spurious
+ * statistic the moment it sees one.
+ *
+ * @return array{0: float, 1: int} the statistic and its degrees of freedom
+ */
+function chiSquaredAgainstPmf(array $values, Closure $pmf): array
+{
+    $counts = array_count_values(array_map('intval', $values));
+    ksort($counts);
+
+    $n = count($values);
+    $chi = 0.0;
+    $bins = 0;
+    $pooledObserved = 0;
+    $pooledExpected = 0.0;
+
+    for ($k = min(array_keys($counts)); $k <= max(array_keys($counts)); $k++) {
+        $expected = $n * $pmf((float) $k);
+        $observed = $counts[$k] ?? 0;
+
+        $pooledObserved += $observed;
+        $pooledExpected += $expected;
+
+        if ($pooledExpected < 5) {
+            continue;
+        }
+
+        $chi += (($pooledObserved - $pooledExpected) ** 2) / $pooledExpected;
+        $bins++;
+        $pooledObserved = 0;
+        $pooledExpected = 0.0;
+    }
+
+    // Degrees of freedom is bins − 1: the total is fixed by construction, so one
+    // is spent. No parameters are estimated from the data here — they came from
+    // the panel — so nothing further is subtracted.
+    return [$chi, max(1, $bins - 1)];
+}
+
+it('matches the analytic mean and variance of every distribution it offers', function (string $name, array $input, float $mean, ?float $variance): void {
+    /*
+     * The test that makes a sampler checkable at all.
+     *
+     * A broken Poisson returns plausible small integers and a broken Gamma
+     * returns plausible positive reals; nothing about either *looks* wrong. What
+     * cannot be faked is the first two moments, and every distribution here knows
+     * its own analytically. Five thousand draws at a fixed seed, so this is a
+     * known answer rather than a sample — a failure means the arithmetic changed.
+     */
+    [, $meta] = drawFrom(new DistributionGenerator, ['count' => 5000, 'distribution' => $name, 'decimals' => 6, ...$input]);
+
+    expect($meta['expected_mean'])->toEqualWithDelta($mean, 0.001);
+
+    // Three percent of the true mean. The standard error of a mean over 5,000
+    // draws is σ/√5000, which for every distribution in this table is well inside
+    // that; tightening it further would buy flakiness rather than correctness.
+    expect($meta['observed_mean'])->toEqualWithDelta($mean, max(0.05, abs($mean) * 0.03));
+
+    if ($variance !== null) {
+        expect($meta['expected_variance'])->toEqualWithDelta($variance, 0.001)
+            // Variance is a fourth-moment estimate and converges far more slowly
+            // than the mean — 12% rather than 3%, and Pareto is excluded from the
+            // check entirely below because its fourth moment is infinite at α = 3.
+            ->and($meta['observed_variance'])->toEqualWithDelta($variance, $variance * 0.12);
+    }
+})->with([
+    'poisson (Knuth)' => ['poisson', ['lambda' => 4.0], 4.0, 4.0],
+    'poisson (PTRS)' => ['poisson', ['lambda' => 60.0], 60.0, 60.0],
+    'binomial' => ['binomial', ['trials' => 40, 'p' => 0.3], 12.0, 8.4],
+    'binomial (reflected)' => ['binomial', ['trials' => 40, 'p' => 0.85], 34.0, 5.1],
+    'exponential' => ['exponential', ['lambda' => 2.0], 0.5, 0.25],
+    'gamma' => ['gamma', ['alpha' => 3.0, 'scale' => 2.0], 6.0, 12.0],
+    'gamma (shape below one)' => ['gamma', ['alpha' => 0.4, 'scale' => 1.0], 0.4, 0.4],
+    'beta' => ['beta', ['alpha' => 2.0, 'beta' => 5.0], 2 / 7, 10 / (49 * 8)],
+    // Variance omitted: it exists at α = 3, but the *sample* variance of a
+    // Pareto only settles once the fourth moment does, and that needs α > 4.
+    'pareto' => ['pareto', ['alpha' => 3.0, 'scale' => 1.0], 1.5, null],
+]);
+
+it('passes a chi-squared test against its own PMF', function (string $name, array $input): void {
+    // Stronger than the moments above: two distributions can share a mean and a
+    // variance and still be different shapes. χ² compares the whole histogram
+    // against the analytic probability of every outcome.
+    [$values] = drawFrom(new DistributionGenerator, ['count' => 4000, 'distribution' => $name, ...$input]);
+
+    [$chi, $degrees] = chiSquaredAgainstPmf($values, Distributions::density($name, [
+        'lambda' => 4.0, 'alpha' => 1.2, 'beta' => 5.0, 'scale' => 1.0,
+        'trials' => 40, 'p' => 0.3, 'support' => 60, ...$input,
+    ]));
+
+    // The critical value at α = 0.001 is roughly d + 3.3√(2d) for these degrees
+    // of freedom. Generous on purpose: the seed is fixed, so a pass is a fact
+    // about the arithmetic, and the bound only has to catch a wrong shape.
+    expect($chi)->toBeLessThan($degrees + 3.3 * sqrt(2 * $degrees));
+})->with([
+    'poisson' => ['poisson', ['lambda' => 4.0]],
+    'poisson (PTRS)' => ['poisson', ['lambda' => 45.0]],
+    'binomial' => ['binomial', ['trials' => 40, 'p' => 0.3]],
+    'zipf' => ['zipf', ['alpha' => 1.2, 'support' => 60]],
+]);
+
+it('reports “undefined” rather than a number where the moment does not exist', function (): void {
+    /*
+     * The two distributions on the list that misbehave, and the reason they are
+     * on it. A Cauchy has no mean — its sample mean wanders forever rather than
+     * settling — and printing one rounded to three places would be the exact
+     * false precision the whole module is built to disprove.
+     */
+    [, $cauchy] = drawFrom(new DistributionGenerator, ['distribution' => 'cauchy', 'count' => 2000]);
+    [, $pareto] = drawFrom(new DistributionGenerator, ['distribution' => 'pareto', 'count' => 2000, 'alpha' => 1.5]);
+
+    expect($cauchy['expected_mean'])->toBeNull()
+        ->and($cauchy['expected_variance'])->toBeNull()
+        ->and($cauchy['undefined_moments'])->toContain('no mean')
+        // The mean over a tenth of the sample against the mean over all of it.
+        // For anything well behaved these agree closely; for a Cauchy they are
+        // routinely further apart than either number is from zero.
+        ->and(abs($cauchy['mean_at_tenth'] - $cauchy['observed_mean']))->toBeGreaterThan(0.5)
+        ->and($pareto['expected_mean'])->toEqualWithDelta(3.0, 0.001)
+        ->and($pareto['expected_variance'])->toBeNull()
+        ->and($pareto['undefined_moments'])->toContain('infinite');
+});
+
+it('emits a histogram whose expected counts are the density, integrated', function (string $name, array $input): void {
+    /*
+     * The overlay is the product, so it gets checked like one. `expected` must be
+     * the analytic probability of each bin times the sample size — which means it
+     * sums to the sample size, minus whatever the plot clipped.
+     *
+     * This caught a real error: the expected counts were originally the density
+     * at each bin centre times the width, and for a Cauchy — whose bins are six
+     * units wide around a peak one unit across — that under-counted the central
+     * bar by more than half. On the one plot whose entire job is to show that the
+     * sampler is right, the curve disagreed with the bars.
+     */
+    [, $meta] = drawFrom(new DistributionGenerator, ['count' => 3000, 'distribution' => $name, ...$input]);
+    $histogram = $meta['histogram'];
+
+    $inside = 3000 - $histogram['outside'];
+
+    expect(array_sum($histogram['counts']))->toBe($inside)
+        ->and(array_sum($histogram['expected']))->toBeGreaterThan($inside * 0.9)
+        ->and(array_sum($histogram['expected']))->toBeLessThan(3000 * 1.02)
+        ->and($histogram['counts'])->toHaveCount(count($histogram['expected']));
+})->with([
+    'poisson' => ['poisson', ['lambda' => 6.0]],
+    'binomial' => ['binomial', ['trials' => 40, 'p' => 0.3]],
+    'zipf' => ['zipf', ['alpha' => 1.1, 'support' => 40]],
+    'gamma' => ['gamma', ['alpha' => 3.0, 'scale' => 2.0]],
+    'beta' => ['beta', ['alpha' => 2.0, 'beta' => 5.0]],
+    'exponential' => ['exponential', ['lambda' => 2.0]],
+    'cauchy' => ['cauchy', ['scale' => 1.0]],
+]);
+
+it('keeps a Zipf draw looking like a power law rather than a uniform one', function (): void {
+    // The failure this is here for: a Zipf sampler with the exponent dropped, or
+    // with the cumulative table built on the wrong array, returns ranks in the
+    // right range and is otherwise invisible. Rank 1 has to dominate.
+    [$values] = drawFrom(new DistributionGenerator, ['distribution' => 'zipf', 'count' => 4000, 'alpha' => 1.2, 'support' => 100]);
+
+    $counts = array_count_values($values);
+    $top = $counts[1] ?? 0;
+
+    expect($top / 4000)->toBeGreaterThan(0.2)
+        // p(1)/p(2) = 2^s exactly, which for s = 1.2 is 2.30. Ten percent either
+        // side covers the sampling noise on 4,000 draws.
+        ->and($top / max(1, $counts[2] ?? 1))->toEqualWithDelta(2 ** 1.2, 0.35)
+        ->and(max(array_keys($counts)))->toBeLessThanOrEqual(100);
+});

@@ -11,19 +11,34 @@ import { deflateSync } from 'node:zlib'
 import { writeFileSync } from 'node:fs'
 import { Rng } from '../resources/js/rng.js'
 import { render as automaton } from '../resources/js/patterns/automaton.js'
+import { render as dla } from '../resources/js/patterns/dla.js'
+import { render as life } from '../resources/js/patterns/life.js'
 import { render as lsystem } from '../resources/js/patterns/lsystem.js'
 import { render as maze } from '../resources/js/patterns/maze.js'
 import { render as perlin } from '../resources/js/patterns/perlin.js'
 import { render as poisson } from '../resources/js/patterns/poisson.js'
 import { render as reaction } from '../resources/js/patterns/reaction.js'
+import { render as simplex } from '../resources/js/patterns/simplex.js'
+import { render as spectral } from '../resources/js/patterns/spectral.js'
 import { render as truchet } from '../resources/js/patterns/truchet.js'
 import { render as voronoi } from '../resources/js/patterns/voronoi.js'
+import { render as walk } from '../resources/js/patterns/walk.js'
+import { render as wfc } from '../resources/js/patterns/wfc.js'
 import { render as worley } from '../resources/js/patterns/worley.js'
 import { render as blob } from '../resources/js/images/blob.js'
+import { render as circles } from '../resources/js/images/circles.js'
 import { render as flowfield } from '../resources/js/images/flowfield.js'
+import { render as gradient } from '../resources/js/images/gradient.js'
 import { render as identicon } from '../resources/js/images/identicon.js'
+import { render as mondrian } from '../resources/js/images/mondrian.js'
+import { render as spray } from '../resources/js/images/spray.js'
+import { render as strata } from '../resources/js/images/strata.js'
+import { render as tiles } from '../resources/js/images/tiles.js'
 
-const RENDERERS = { perlin, worley, automaton, reaction, truchet, poisson, maze, voronoi, lsystem, flowfield, blob, identicon }
+const RENDERERS = {
+  perlin, simplex, worley, spectral, automaton, life, reaction, truchet, poisson, maze, voronoi, lsystem, wfc, walk, dla,
+  flowfield, blob, identicon, circles, mondrian, gradient, spray, tiles, strata,
+}
 
 /*
  * The image renderers draw a good deal more per pixel than the pattern ones, so

@@ -61,7 +61,14 @@
     ]);
 @endphp
 
-<x-layout>
+<x-layout :breadcrumbs="[
+              ['name' => 'Randomly', 'url' => route('home')],
+              ['name' => 'Library', 'url' => route('library')],
+          ]"
+          :og="[
+    'title' => 'Library · Randomly',
+    'description' => 'All ' . $generators->count() . ' generators in one catalogue — numbers, words, equations, patterns, images and audio — filterable by module. Each one is free to call over HTTP with no key.',
+]">
     <x-slot:title>Library</x-slot:title>
 
     <div x-data="{
@@ -191,10 +198,13 @@
             </ul>
 
             <p x-show="count(live) === 0" x-cloak class="mt-5 border border-line px-6 py-10 text-center text-sm text-muted">
-                Nothing built matches that yet — try the planned list below.
+                Nothing matches that yet.
             </p>
         </section>
 
+        {{-- Hidden entirely once the roadmap empties: a "Planned" heading over an
+             empty grid reads as a rendering fault, not as an achievement. --}}
+        @if ($plannedCount > 0)
         {{-- ── Planned ────────────────────────────────────────────────────────
              Deliberately dimmed, chipped and unlinked. Nothing here exists. --}}
         <section class="mx-auto max-w-7xl px-6 py-14" aria-labelledby="planned-heading">
@@ -234,5 +244,6 @@
                 Nothing planned matches <span class="font-mono text-text" x-text="q"></span> either.
             </p>
         </section>
+        @endif
     </div>
 </x-layout>

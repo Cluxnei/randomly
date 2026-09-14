@@ -185,6 +185,70 @@ export function lowpass (frequency, q, sampleRate) {
   }
 }
 
+/**
+ * Sample a breakpoint curve at a fractional position, with wraparound.
+ *
+ * Scores send slow movement as a handful of points rather than a per-sample
+ * envelope — eight numbers instead of a megabyte — and this is what turns them
+ * back into a continuous curve. The last point interpolates back to the first
+ * rather than holding, so a buffer built from one of these has no seam at the
+ * loop: the same reasoning as the filter sweep in noise.js.
+ */
+export function curveAt (points, position) {
+  const span = points.length
+  const scaled = position * span
+  const index = Math.floor(scaled)
+  const fraction = scaled - index
+
+  const a = points[index % span]
+  const b = points[(index + 1) % span]
+
+  return a + (b - a) * fraction
+}
+
+/**
+ * A low pass whose cutoff drifts across the buffer.
+ *
+ * The obvious implementation — slice into blocks and call `biquad` on each with
+ * fresh coefficients — puts a click at every block boundary, because a biquad
+ * carries two samples of state and a new one starts from silence. At 10 ms
+ * blocks that is a hundred clicks a second under the sound: quiet, broadband,
+ * and exactly the kind of fault that survives a listen and shows up in a
+ * spectrum. So the state lives here and only the coefficients are swapped.
+ *
+ * They are recomputed once per block rather than per sample, because an RBJ
+ * cookbook update is a sin, a cos and a divide — more arithmetic than the filter
+ * it configures. A cutoff moving in 10 ms steps across a thirty-second sweep is
+ * indistinguishable from one moving continuously.
+ */
+export function sweptLowpass (input, { cutoff, q = 0.7, sweep = [1] }, sampleRate, blockSeconds = 0.01) {
+  const out = new Float32Array(input.length)
+  const block = Math.max(1, Math.round(blockSeconds * sampleRate))
+
+  let z1 = 0
+  let z2 = 0
+
+  for (let start = 0; start < input.length; start += block) {
+    const end = Math.min(input.length, start + block)
+
+    // Clamped below Nyquist. An RBJ low pass with its cutoff at half the sample
+    // rate is not a gentle filter — it is an unstable one, and the output leaves
+    // for infinity rather than merely sounding wrong.
+    const target = Math.min(sampleRate * 0.45, Math.max(30, cutoff * curveAt(sweep, start / input.length)))
+    const { b0, b1, b2, a1, a2 } = lowpass(target, q, sampleRate)
+
+    for (let i = start; i < end; i++) {
+      const x = input[i]
+      const y = b0 * x + z1
+      z1 = b1 * x - a1 * y + z2
+      z2 = b2 * x - a2 * y
+      out[i] = y
+    }
+  }
+
+  return out
+}
+
 export function normalise (signal, peak = 0.9) {
   let max = 0
   for (let i = 0; i < signal.length; i++) {

@@ -103,12 +103,43 @@
 
     $ogImage = $generation->ogImageUrl()
         ?? route('og.generator', ['module' => $ogModule, 'generator' => $ogGenerator]);
+
+    /*
+     * This page's description is about *this* generator.
+     *
+     * A site-wide sentence repeated on forty pages tells a search engine that the
+     * forty pages are the same page. The generator's own name and tagline are
+     * already written, already specific, and already true — so they are what goes
+     * in the tag, with the one fact a searcher is most likely to be after (that it
+     * is callable for free, at this exact address) after them.
+     */
+    $metaDescription = sprintf(
+        '%s — %s Free and keyless over HTTP at /api/v1/g/%s; every result carries a receipt naming the entropy source it came from.',
+        $generator->name(),
+        rtrim($generator->tagline(), '.').'.',
+        $generator->key(),
+    );
+
+    /*
+     * A replay is a different address from the studio it replays into: the query
+     * string carries the token, the version and the parameters, and without them
+     * the URL renders something else entirely. So it is its own canonical, while a
+     * studio page opened with ?count=12 is not.
+     */
+    $canonicalUrl = $generation->replayed ? url()->full() : url()->current();
 @endphp
 
-<x-layout :og="[
+<x-layout :canonical="$canonicalUrl"
+          :markdown="route('docs.generator', ['module' => $ogModule, 'generator' => $ogGenerator])"
+          :breadcrumbs="[
+              ['name' => 'Randomly', 'url' => route('home')],
+              ['name' => 'Library', 'url' => route('library')],
+              ['name' => $generator->name(), 'url' => route('studio', ['module' => $ogModule, 'generator' => $ogGenerator])],
+          ]"
+          :og="[
     'image' => $ogImage,
     'title' => $generator->name() . ' · Randomly',
-    'description' => $generator->tagline(),
+    'description' => $metaDescription,
     'alt' => 'A share card showing this result and the receipt naming where its randomness came from.',
 ]">
     <x-slot:title>{{ $generator->name() }}</x-slot:title>

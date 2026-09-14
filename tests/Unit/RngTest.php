@@ -148,3 +148,40 @@ it('never rejects a range that fills its bit width exactly', function (): void {
 
     expect($rng->rejections())->toBe(0);
 });
+
+it('stays inside the bounds at every bit width, including the one that broke', function (int $bits): void {
+    // 63 bits is where the naive mask stops being an integer: `1 << 63` is
+    // PHP_INT_MIN, subtracting one promotes to a double, and `&` against a double
+    // masks nothing. It failed silently — 272 draws in 500 landed out of bounds —
+    // and it was reached by Miller-Rabin picking witnesses, not by anything exotic.
+    $rng = new Rng(new HkdfStream(str_repeat('w', 16), "bits:{$bits}"));
+    $hi = $bits >= 63 ? PHP_INT_MAX - 1 : (1 << $bits) - 1;
+
+    for ($i = 0; $i < 500; $i++) {
+        $value = $rng->intBetween(0, $hi);
+
+        expect($value)->toBeGreaterThanOrEqual(0)->toBeLessThanOrEqual($hi);
+    }
+})->with([1, 2, 7, 8, 16, 31, 32, 40, 52, 61, 62, 63]);
+
+it('spans the full width of a large range rather than a low corner', function (): void {
+    // Out-of-bounds is the loud failure; a mask that silently clears the high bits
+    // is the quiet one, and would leave every draw in the bottom sliver of the
+    // range while passing a bounds check.
+    $rng = new Rng(new HkdfStream(str_repeat('w', 16), 'span'));
+    $hi = PHP_INT_MAX - 1;
+    $max = 0;
+
+    for ($i = 0; $i < 500; $i++) {
+        $max = max($max, $rng->intBetween(0, $hi));
+    }
+
+    expect($max)->toBeGreaterThan((int) ($hi * 0.9));
+});
+
+it('refuses a range that cannot fit in a signed integer', function (): void {
+    $rng = new Rng(new HkdfStream(str_repeat('w', 16), 'overflow'));
+
+    expect(fn () => $rng->intBetween(PHP_INT_MIN, PHP_INT_MAX))
+        ->toThrow(InvalidArgumentException::class, 'overflows');
+});

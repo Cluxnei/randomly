@@ -7,25 +7,37 @@
  */
 import { Rng } from './rng.js'
 import { render as automaton } from './patterns/automaton.js'
+import { render as dla } from './patterns/dla.js'
+import { render as life } from './patterns/life.js'
 import { render as lsystem } from './patterns/lsystem.js'
 import { render as maze } from './patterns/maze.js'
 import { render as perlin } from './patterns/perlin.js'
 import { render as poisson } from './patterns/poisson.js'
 import { render as reaction } from './patterns/reaction.js'
+import { render as simplex } from './patterns/simplex.js'
+import { render as spectral } from './patterns/spectral.js'
 import { render as truchet } from './patterns/truchet.js'
 import { render as voronoi } from './patterns/voronoi.js'
+import { render as walk } from './patterns/walk.js'
+import { render as wfc } from './patterns/wfc.js'
 import { render as worley } from './patterns/worley.js'
 
 const RENDERERS = {
   perlin,
+  simplex,
   worley,
+  spectral,
   automaton,
+  life,
   reaction,
   truchet,
   poisson,
   maze,
   voronoi,
   lsystem,
+  wfc,
+  walk,
+  dla,
 }
 
 export function isRenderable (algorithm) {

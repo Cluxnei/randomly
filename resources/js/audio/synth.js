@@ -139,6 +139,48 @@ export function oscillator (wave, frequency, length, sampleRate, phase = 0) {
 }
 
 /**
+ * An oscillator whose pitch glides, for the sounds that are a slide rather than
+ * a note — a coin flick, an error buzz, the swoop under a notification.
+ *
+ * Separate from `oscillator` above rather than a flag on it because the two have
+ * genuinely different inner loops: a fixed oscillator knows its phase increment
+ * once, and this one recomputes it every sample. Sharing the code would put a
+ * branch in the hottest loop in the module for the benefit of neither.
+ *
+ * The glide is exponential, which is to say linear in pitch. A linear sweep in
+ * hertz from 400 to 1600 spends half its time in the top octave and sounds like
+ * a laser; the same sweep in cents sounds like something rising.
+ */
+export function sweptOscillator (wave, from, to, length, sampleRate, phase = 0) {
+  const out = new Float32Array(length)
+  let t = phase - Math.floor(phase)
+
+  for (let i = 0; i < length; i++) {
+    const frequency = from * ((to / from) ** (length === 1 ? 0 : i / (length - 1)))
+    const dt = frequency / sampleRate
+
+    switch (wave) {
+      case 'saw':
+        out[i] = 2 * t - 1 - polyblep(t, dt)
+        break
+      case 'square':
+        out[i] = (t < 0.5 ? 1 : -1) + polyblep(t, dt) - polyblep((t + 0.5) % 1, dt)
+        break
+      case 'triangle':
+        out[i] = 4 * Math.abs(t - 0.5) - 1
+        break
+      default:
+        out[i] = Math.sin(2 * Math.PI * t)
+    }
+
+    t += dt
+    if (t >= 1) t -= 1
+  }
+
+  return out
+}
+
+/**
  * FM: y(t) = sin(2π f_c t + I(t)·sin(2π f_m t)) — docs/09 §6.
  *
  * The modulation index gets its own decaying envelope, which is the whole

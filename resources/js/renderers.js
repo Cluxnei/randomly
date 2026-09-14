@@ -18,13 +18,25 @@
 import { draw as drawPattern, isRenderable as isPattern } from './canvas.js'
 import { Rng } from './rng.js'
 import { bytesNeeded as blobBytes, render as blob } from './images/blob.js'
+import { bytesNeeded as circlesBytes, render as circles } from './images/circles.js'
 import { bytesNeeded as flowfieldBytes, createPass, render as flowfield } from './images/flowfield.js'
+import { bytesNeeded as gradientBytes, render as gradient } from './images/gradient.js'
 import { bytesNeeded as identiconBytes, render as identicon } from './images/identicon.js'
+import { bytesNeeded as mondrianBytes, render as mondrian } from './images/mondrian.js'
+import { bytesNeeded as sprayBytes, render as spray } from './images/spray.js'
+import { bytesNeeded as strataBytes, render as strata } from './images/strata.js'
+import { bytesNeeded as tilesBytes, render as tiles } from './images/tiles.js'
 
 const IMAGE_RENDERERS = {
   flowfield: { render: flowfield, bytes: flowfieldBytes },
   blob: { render: blob, bytes: blobBytes },
   identicon: { render: identicon, bytes: identiconBytes },
+  circles: { render: circles, bytes: circlesBytes },
+  mondrian: { render: mondrian, bytes: mondrianBytes },
+  gradient: { render: gradient, bytes: gradientBytes },
+  spray: { render: spray, bytes: sprayBytes },
+  tiles: { render: tiles, bytes: tilesBytes },
+  strata: { render: strata, bytes: strataBytes },
 }
 
 export function isRenderable (algorithm) {

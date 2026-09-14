@@ -149,28 +149,85 @@ function fundamental (signal, sampleRate, minHz = 60, maxHz = 2000) {
   const window = Math.min(signal.length, sampleRate)
 
   const scores = new Float64Array(maxLag + 1)
-  let best = -Infinity
+
+  /*
+   * Normalised by the energy of the two segments being compared, not by the
+   * overlap length.
+   *
+   * Dividing by the length alone leaves the estimate biased by the *envelope*:
+   * where the signal is growing, a shorter lag pairs quiet samples with samples
+   * that are only slightly louder, while a longer lag pairs them with much
+   * louder ones — and the sum is dominated by amplitude rather than by shape.
+   * Measured on the drone generator, whose four-second fade-in means the whole
+   * analysis window is a ramp: it reported 117 Hz for a piece built on 110.
+   *
+   * Dividing by √(E₁·E₂) is the Pearson form and cancels the envelope exactly,
+   * which leaves the question the measurement is supposed to be asking: at what
+   * lag does the waveform have the same *shape*, whatever its level?
+   */
+  const energy = new Float64Array(window + 1)
+  for (let i = 0; i < window; i++) energy[i + 1] = energy[i] + signal[i] * signal[i]
 
   for (let lag = minLag; lag <= maxLag; lag++) {
     let sum = 0
     for (let i = 0; i < window - lag; i++) sum += signal[i] * signal[i + lag]
 
-    // Normalise by the overlap length, or long lags are penalised purely for
-    // having fewer terms and the estimate drifts sharp.
-    scores[lag] = sum / (window - lag)
-    if (scores[lag] > best) best = scores[lag]
+    const head = energy[window - lag]
+    const tail = energy[window] - energy[lag]
+
+    scores[lag] = head > 0 && tail > 0 ? sum / Math.sqrt(head * tail) : 0
   }
 
-  // Take the *earliest* lag that comes close to the best score, not the best one.
-  //
-  // Autocorrelation peaks at every multiple of the true period, so a waveform is
-  // just as self-similar at two periods as at one. On a decaying note the longer
-  // lag can edge ahead on noise alone, and the reported pitch drops an exact
-  // octave — a 196 Hz string measuring 98.2 Hz, which reads like a synthesis bug
-  // and is a measurement bug. Preferring the earliest near-maximal peak is the
-  // standard fix and costs one extra pass.
-  for (let lag = minLag; lag <= maxLag; lag++) {
-    if (scores[lag] >= best * 0.9) return sampleRate / lag
+  /*
+   * Ignore every lag before the correlation first goes negative.
+   *
+   * A waveform resembles itself at lag zero and at every small lag near it —
+   * a 110 Hz drone has a period of 401 samples, so at lag 22 it has barely moved
+   * and correlates at 94% of its maximum. Searching from the shortest lag
+   * upward therefore reports 2 kHz for a signal whose spectrum is unambiguously
+   * a harmonic series on 110 Hz, which is a measurement bug that reads exactly
+   * like a synthesis one. (It was: the drone generator measured 2004.5 Hz.)
+   *
+   * The standard fix, and the one every pitch tracker uses: a true period has to
+   * put the waveform out of phase with itself somewhere in between, so skip
+   * ahead to the first lag where the correlation has actually gone negative and
+   * only look for peaks beyond it. Signals that never go negative — a filtered
+   * noise bed with no pitch in it at all — fall back to the whole range, because
+   * for those there is no right answer to protect.
+   */
+  let start = minLag
+  while (start <= maxLag && scores[start] > 0) start++
+  if (start > maxLag) start = minLag
+
+  let best = -Infinity
+  for (let lag = start; lag <= maxLag; lag++) best = Math.max(best, scores[lag])
+
+  /*
+   * Take the earliest *peak* that comes close to the best score — not the
+   * earliest lag that crosses the threshold, and not the best score outright.
+   *
+   * Both of the obvious rules are wrong, in opposite directions. Taking the
+   * highest score gets octave errors: autocorrelation peaks at every multiple of
+   * the true period, and on a decaying note the longer lag can edge ahead on
+   * noise alone — a 196 Hz string measuring 98.2 Hz. Taking the first lag over
+   * 90% of it gets the other error, because around a peak the curve is broad:
+   * the drone's correlation passes 90% at lag 376 on its way to a maximum at
+   * 400, so a 110 Hz piece measured 117 Hz. Requiring a local maximum asks for
+   * the thing a period actually is.
+   *
+   * The peak is then interpolated parabolically through its two neighbours. The
+   * lag is an integer number of samples and the true period is not — at 110 Hz
+   * one sample is a quarter of a percent, which is the difference between
+   * measuring a note and measuring the sample rate.
+   */
+  for (let lag = start + 1; lag < maxLag; lag++) {
+    if (scores[lag] < best * 0.9) continue
+    if (scores[lag] < scores[lag - 1] || scores[lag] < scores[lag + 1]) continue
+
+    const curvature = scores[lag - 1] - 2 * scores[lag] + scores[lag + 1]
+    const offset = curvature === 0 ? 0 : 0.5 * (scores[lag - 1] - scores[lag + 1]) / curvature
+
+    return sampleRate / (lag + offset)
   }
 
   return sampleRate / minLag

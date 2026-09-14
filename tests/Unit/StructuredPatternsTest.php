@@ -3,10 +3,15 @@
 declare(strict_types=1);
 
 use App\Random\Generators\Contracts\Generator;
+use App\Random\Generators\Patterns\DlaGenerator;
+use App\Random\Generators\Patterns\LifeGenerator;
 use App\Random\Generators\Patterns\LsystemGenerator;
 use App\Random\Generators\Patterns\MazeGenerator;
 use App\Random\Generators\Patterns\PoissonGenerator;
+use App\Random\Generators\Patterns\SpectralGenerator;
 use App\Random\Generators\Patterns\VoronoiGenerator;
+use App\Random\Generators\Patterns\WalkGenerator;
+use App\Random\Generators\Patterns\WfcGenerator;
 use Symfony\Component\Process\Process;
 
 /**
@@ -375,4 +380,282 @@ it('warns how big the expansion gets before anyone drags the slider', function (
     );
 
     expect($result->meta['estimated_symbols'])->toBeGreaterThan($before->meta['estimated_symbols'] * 3);
+});
+
+// ── patterns.life ────────────────────────────────────────────────────────────
+
+/** Run a rule over a known starting position through the real renderer. */
+function lifeRun(string $birth, string $survive, string $shape, int $generations): array
+{
+    $process = Process::fromShellCommandline(
+        sprintf('node scripts/check-life.mjs %s %s %s %d', $birth, $survive, $shape, $generations),
+        dirname(__DIR__, 2),
+    );
+    $process->run();
+
+    expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+
+    return json_decode(trim($process->getOutput()), true, 512, JSON_THROW_ON_ERROR);
+}
+
+it('parses B/S notation into the two tables it names', function (string $notation, array $birth, array $survive): void {
+    /*
+     * The one part of this generator with a known answer, which is why it lives in
+     * PHP: B3/S23 is birth on exactly three and survival on two or three, whatever
+     * the seed or the canvas says.
+     *
+     * Birth on zero is forced off in every rule. It is legal notation and on a
+     * torus it lights every empty cell in the world at once, forever — a rule
+     * that can only ever draw one rectangle.
+     */
+    [$parsedBirth, $parsedSurvive] = LifeGenerator::parseRule($notation);
+
+    expect(array_keys($parsedBirth, 1, true))->toBe($birth)
+        ->and(array_keys($parsedSurvive, 1, true))->toBe($survive)
+        ->and($parsedBirth[0])->toBe(0);
+})->with([
+    ['B3/S23', [3], [2, 3]],
+    ['b36/s23', [3, 6], [2, 3]],
+    ['B1357/S1357', [1, 3, 5, 7], [1, 3, 5, 7]],
+    ['B234/S', [2, 3, 4], []],
+    // No letters at all: the convention is birth first.
+    ['3/23', [3], [2, 3]],
+    // Unparseable input falls back to Conway rather than rendering a dead canvas.
+    ['nonsense', [3], [2, 3]],
+    ['B0123/S', [1, 2, 3], []],
+]);
+
+it('leaves a still life still and gives a blinker period two', function (): void {
+    /*
+     * The known answers of the whole subject. A block is four cells each with
+     * three neighbours, so every one survives and no empty cell has exactly
+     * three — it cannot change. A blinker is three in a row, which becomes three
+     * in a column, which becomes three in a row.
+     *
+     * This runs the renderer's own `step` through node, because that is where the
+     * evolution lives. A second implementation written for the test would agree
+     * with itself and prove nothing.
+     */
+    if (! nodeIsAvailable()) {
+        $this->markTestSkipped('node is not available; the Life check needs it.');
+    }
+
+    $block = lifeRun('3', '23', 'block', 4);
+    expect($block['returned'])->toBe([true, true, true, true])
+        ->and($block['population'])->toBe(4);
+
+    $beehive = lifeRun('3', '23', 'beehive', 3);
+    expect($beehive['returned'])->toBe([true, true, true])
+        ->and($beehive['population'])->toBe(6);
+
+    $blinker = lifeRun('3', '23', 'blinker', 4);
+    expect($blinker['period'])->toBe(2)
+        ->and($blinker['returned'])->toBe([false, true, false, true])
+        ->and($blinker['population'])->toBe(3);
+});
+
+it('moves a glider one cell diagonally every four generations', function (): void {
+    /*
+     * The one position of the three that tests the rule's asymmetry rather than
+     * its arithmetic. A glider is not symmetric, so a transposed neighbour count
+     * or a swapped birth and survival table still leaves a block a block and a
+     * blinker a blinker — and sends the glider somewhere else, or nowhere.
+     */
+    if (! nodeIsAvailable()) {
+        $this->markTestSkipped('node is not available; the Life check needs it.');
+    }
+
+    $glider = lifeRun('3', '23', 'glider', 4);
+
+    expect($glider['population'])->toBe(5)
+        ->and($glider['end_corner'])->toBe([
+            $glider['start_corner'][0] + 1,
+            $glider['start_corner'][1] + 1,
+        ]);
+});
+
+it('caps the world and the generation count so a slider cannot hang the tab', function (): void {
+    // Cells × generations is the real cost and both sliders multiply, so the
+    // budget has to be enforced on the product rather than on either one.
+    $spec = structuredSpec(new LifeGenerator, ['width' => 2048, 'height' => 2048, 'cell' => 1, 'generations' => 900]);
+
+    expect($spec['cols'] * $spec['rows'])->toBeLessThanOrEqual(240000)
+        ->and($spec['cols'] * $spec['rows'] * $spec['generations'])->toBeLessThanOrEqual(40000000);
+});
+
+// ── patterns.spectral ────────────────────────────────────────────────────────
+
+it('produces a field whose measured spectral slope is the β it was asked for', function (float $beta): void {
+    /*
+     * The only falsifiable claim this generator makes, and the whole reason it is
+     * built in the frequency domain rather than by stacking octaves: the spectrum
+     * is a power law with an exponent you set, exactly, rather than approximately.
+     *
+     * The checker's forward transform is a separate implementation from the
+     * renderer's inverse one on purpose — see the script. A field synthesised
+     * wrongly and measured with the same wrongness can still read as a perfect
+     * power law.
+     */
+    if (! nodeIsAvailable()) {
+        $this->markTestSkipped('node is not available; the spectral check needs it.');
+    }
+
+    $process = Process::fromShellCommandline(
+        sprintf('node scripts/check-spectral-slope.mjs %s 256 99', $beta),
+        dirname(__DIR__, 2),
+    );
+    $process->run();
+
+    expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+
+    $measured = json_decode(trim($process->getOutput()), true, 512, JSON_THROW_ON_ERROR);
+
+    // A quarter of an exponent of tolerance. The measurement is a least-squares
+    // fit over twenty-four bins of one realisation, so it has real scatter; the
+    // point is that β = 2 never measures as 1 or as 3.
+    expect($measured['slope'])->toBeGreaterThan(-$beta - 0.25)
+        ->toBeLessThan(-$beta + 0.25);
+})->with([[-1.0], [0.0], [1.0], [2.0], [3.0]]);
+
+it('resolves a named colour of noise to its exponent, and a custom one to the slider', function (): void {
+    expect(structuredSpec(new SpectralGenerator, ['preset' => 'white'])['beta'])->toBe(0.0)
+        ->and(structuredSpec(new SpectralGenerator, ['preset' => 'pink'])['beta'])->toBe(1.0)
+        ->and(structuredSpec(new SpectralGenerator, ['preset' => 'brown'])['beta'])->toBe(2.0)
+        ->and(structuredSpec(new SpectralGenerator, ['preset' => 'blue'])['beta'])->toBe(-1.0)
+        ->and(structuredSpec(new SpectralGenerator, ['preset' => 'custom', 'beta' => 1.45])['beta'])->toBe(1.45);
+});
+
+// ── patterns.wfc ─────────────────────────────────────────────────────────────
+
+it('never places a window the sample does not contain', function (string $sample, int $n, int $symmetry): void {
+    /*
+     * The guarantee the overlapping model exists to deliver, stated precisely:
+     * every N×N window of the output appears somewhere in the input, under the
+     * symmetries allowed. That is stronger than "no two neighbours disagree" and
+     * it is exactly checkable.
+     *
+     * The checker rebuilds the legal window set independently of the renderer's
+     * extractor — see the script. Importing the extractor would test the solver
+     * against the extractor's idea of the rules, which is the one pair of things
+     * that could plausibly be wrong together.
+     */
+    if (! nodeIsAvailable()) {
+        $this->markTestSkipped('node is not available; the WFC check needs it.');
+    }
+
+    $process = Process::fromShellCommandline(
+        sprintf('node scripts/check-wfc.mjs %s %d %d 60 40 4242', escapeshellarg($sample), $n, $symmetry),
+        dirname(__DIR__, 2),
+    );
+    $process->run();
+
+    expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+
+    $result = json_decode(trim($process->getOutput()), true, 512, JSON_THROW_ON_ERROR);
+
+    expect($result['violations'])->toBe(0)
+        ->and($result['solved'])->toBeTrue()
+        // A solve that only ever used two or three patterns would satisfy the
+        // constraint and produce a flat wash, so the variety is asserted too.
+        ->and($result['distinct_windows'])->toBeGreaterThan(10)
+        ->and($result['windows'])->toBeGreaterThan(2000);
+})->with([
+    ['000121000,000121000,000121000,111111111,222222222,111111111,000121000,000121000,000121000', 3, 8],
+    ['0000000000,0111111110,0100000010,0101110010,0101010010,0101011110,0100010000,0111110000,0000000000', 3, 8],
+    ['0022000,0011000,2211122,0011000,0011000,2211122,0011000', 2, 4],
+    ['00000000000,01111100000,01000100000,01000100000,01111111110,00000100010,00000100010,00000111110,00000000000', 3, 1],
+]);
+
+it('ships every bundled sample with a palette long enough to draw it', function (): void {
+    // The sample's colour indices address the palette directly, so a palette
+    // shorter than the sample's highest index would clamp two materials onto one
+    // colour and the tiling would lose exactly the structure it is about.
+    foreach (array_keys((new WfcGenerator)->schema()->params()['sample']->options) as $sample) {
+        $spec = structuredSpec(new WfcGenerator, ['sample' => $sample]);
+
+        $highest = 0;
+        foreach ($spec['sample']['rows'] as $row) {
+            $highest = max($highest, max(array_map('intval', str_split($row))));
+        }
+
+        expect(count($spec['palette']))->toBe($highest + 1)
+            // Every sample must tile: the extractor reads it periodically, so a
+            // ragged one would silently generate patterns that are half sample
+            // and half wrap.
+            ->and(array_unique(array_map('strlen', $spec['sample']['rows'])))->toHaveCount(1);
+    }
+});
+
+it('coarsens the grid rather than cropping it when the cell count runs over', function (): void {
+    // The solve is cells × patterns × adjacency. Cropping would silently render a
+    // corner of the picture the parameters asked for; coarsening renders all of
+    // it, less finely.
+    $spec = structuredSpec(new WfcGenerator, ['width' => 2048, 'height' => 2048, 'tiles' => 140]);
+
+    expect($spec['cols'] * $spec['rows'])->toBeLessThanOrEqual(3400)
+        ->and($spec['cols'])->toBeGreaterThan(8);
+});
+
+// ── patterns.walk ────────────────────────────────────────────────────────────
+
+it('scales each walk so all three cover the same ground from the same step count', function (): void {
+    /*
+     * The comparison is the entire point of this generator, and it only means
+     * anything if the three panels are drawing walks of the same *size*. Each
+     * mode's step is solved backwards from its own exponent — √n for Brownian,
+     * n^(3/4) for self-avoiding, n^(1/α) for Lévy — so the reach is equal and
+     * shape is the only thing left to differ.
+     */
+    $spec = structuredSpec(new WalkGenerator, ['steps' => 2500, 'tail' => 1.4]);
+
+    expect($spec['panels'])->toHaveCount(3);
+
+    $reach = [];
+
+    foreach ($spec['panels'] as $panel) {
+        $exponent = match ($panel['mode']) {
+            'brownian' => 0.5,
+            'saw' => 0.75,
+            default => 1 / 1.4,
+        };
+
+        // A self-avoiding walk is scaled to the length it will actually reach
+        // before trapping itself, not to the length it was asked for.
+        $length = $panel['mode'] === 'saw' ? 71 : $spec['steps'];
+        $reach[$panel['mode']] = $panel['step'] * $length ** $exponent;
+    }
+
+    expect($reach['brownian'])->toBeGreaterThan(0.0);
+
+    foreach ($reach as $mode => $value) {
+        // Brownian carries an extra √2 because its step is per axis; the rest
+        // land on the same number.
+        expect($value)->toBeGreaterThan($reach['levy'] * 0.6)
+            ->toBeLessThan($reach['levy'] * 1.4, "[{$mode}] is scaled differently from the others");
+    }
+});
+
+it('gives the self-avoiding panel many short walks rather than a few long ones', function (): void {
+    // A growing self-avoiding walk traps itself after about seventy steps on the
+    // square lattice and cannot be asked for more, so its panel has to spend the
+    // budget differently from the other two.
+    $spec = structuredSpec(new WalkGenerator);
+
+    $panels = collect($spec['panels'])->keyBy('mode');
+
+    expect($panels['saw']['walkers'])->toBeGreaterThan($panels['brownian']['walkers'])
+        ->and($panels['saw']['cell'])->toBeGreaterThanOrEqual(2.0)
+        ->and($panels['saw']['cols'] * $panels['saw']['rows'])->toBeGreaterThan(100);
+});
+
+// ── patterns.dla ─────────────────────────────────────────────────────────────
+
+it('keeps the lattice inside its budget however fine the cell is dragged', function (): void {
+    // A particle's cost is how far it has to walk, which grows with the launch
+    // circle and therefore with the lattice — halving the cell roughly triples
+    // the render.
+    $spec = structuredSpec(new DlaGenerator, ['width' => 2048, 'height' => 2048, 'cell' => 1]);
+
+    expect($spec['cols'] * $spec['rows'])->toBeLessThanOrEqual(260000)
+        ->and($spec['particles'])->toBeLessThanOrEqual(intdiv($spec['cols'] * $spec['rows'], 2));
 });

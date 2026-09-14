@@ -4,7 +4,25 @@ The site consumes exactly the same endpoints that third parties do. There is no 
 API. This keeps one code path and makes the API a real product rather than an afterthought.
 
 No authentication, no key, no signup — matching the philosophy of every source we
-consume. Rate limited to 60 requests/minute per IP.
+consume.
+
+**Two rate-limit buckets, per IP.** 60 requests a minute overall, of which at most 20 may
+be image or audio renders. The endpoints cost wildly different amounts: a JSON response is
+microseconds of pure PHP, while a PNG or WAV starts a Node process and can take half a
+second of CPU. One shared allowance would have to be set either low enough to protect the
+box — needlessly throttling cheap calls — or high enough to let sixty renders a minute
+saturate it. A media request is charged against *both* buckets.
+
+**On "in memory":** PHP shares nothing between requests, so a genuinely in-process counter
+would reset on every call and limit nothing at all. The limiter uses APCu when the
+extension is present and the file cache otherwise — no service, no extension requirement,
+and no database round trip just to decide whether to say no. Either way the count is
+**per server**, which is the honest description: this is a showcase, not a distributed
+rate-limit guarantee, and claiming otherwise would be the kind of overstatement the rest
+of this project exists to avoid.
+
+A `429` carries `retry_after_seconds` and both limits, because the caller is usually a
+script or a language model rather than a person reading a page.
 
 ## `GET /api/v1/generators`
 

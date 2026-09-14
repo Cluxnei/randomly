@@ -131,7 +131,11 @@
     $credited = count($sources) + count($corpora) + count($software);
 @endphp
 
-<x-layout :og="['title' => 'Credits · Randomly', 'description' => 'Every entropy source, corpus, library and typeface this site stands on, with its licence. Free does not mean uncredited.']">
+<x-layout :breadcrumbs="[
+              ['name' => 'Randomly', 'url' => route('home')],
+              ['name' => 'Credits', 'url' => route('credits')],
+          ]"
+          :og="['title' => 'Credits · Randomly', 'description' => 'Every entropy source, corpus, library and typeface this site stands on, with its licence. Free does not mean uncredited.']">
     <x-slot:title>Credits</x-slot:title>
 
     <section class="border-b border-line">

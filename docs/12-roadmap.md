@@ -65,11 +65,17 @@ filling in the registry.
 - Remaining external sources: `Bitcoin`, `Seismic`, `SpaceWeather`, `Atmosphere`, `Iss`, `AnuQrng`
 - Credits page
 
-## Phase 7 — Fill out the registry (ongoing · 8 shipped, 23 to go)
+## Phase 7 — Fill out the registry ✅ done — all 63 shipped
 
-Every remaining generator from `04`–`09`. Each is one class plus one registry line; they
-can be added in any order, by anyone, without touching the framework. That property is
-the point of the architecture, and Phase 7 is where it pays off.
+Every generator from `04`–`09` is written. The architecture's claim was that adding one
+would be a class plus a registry line, needing no route, controller or view — and 31
+generators were added across three batches without any of those three files being touched
+once. That is the strongest evidence the schema-driven design works.
+
+The roadmap file is now empty, which the landing page and the library both handle: a
+"Planned" heading over an empty grid reads as a rendering fault rather than an
+achievement, so it is hidden, and "0 more specified" became "every one specified is
+built".
 
 ---
 

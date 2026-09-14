@@ -10,8 +10,10 @@ use App\Random\GeneratorRegistry;
 use App\Random\Generators\Contracts\Generator;
 use App\Random\Media\MediaRenderer;
 use App\Random\Og\OgImage;
+use Illuminate\Cache\RateLimiter as LaravelRateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -45,6 +47,15 @@ class AppServiceProvider extends ServiceProvider
          * One renderer, so the cache directory and the project root are settled in
          * a single place rather than guessed at each call site.
          */
+        /*
+         * The limiter keeps its counters in its own store rather than the app cache.
+         * With CACHE_STORE=database, deciding whether to reject a request would mean
+         * a database round trip first — the most expensive possible way to say no.
+         */
+        $this->app->singleton(LaravelRateLimiter::class, fn ($app) => new LaravelRateLimiter(
+            $app['cache']->store((string) config('randomly.limits.store', 'file'))
+        ));
+
         $this->app->singleton(MediaRenderer::class, fn (): MediaRenderer => new MediaRenderer(
             cacheDirectory: storage_path('app/media'),
             projectRoot: base_path(),
@@ -76,6 +87,27 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * A 429 a machine can act on.
+     *
+     * The API is meant to be consumed by scripts and by language models, and
+     * "Too Many Requests" as bare HTML tells either of them nothing. This says how
+     * long to wait and where the limits are documented.
+     */
+    private function limitExceeded(Request $request, array $headers): JsonResponse
+    {
+        return response()->json([
+            'error' => 'rate_limited',
+            'message' => 'Too many requests. The API is free and unauthenticated, so it is rate limited per IP instead.',
+            'retry_after_seconds' => (int) ($headers['Retry-After'] ?? 60),
+            'limits' => [
+                'requests_per_minute' => (int) config('randomly.limits.per_minute', 60),
+                'renders_per_minute' => (int) config('randomly.limits.media_per_minute', 20),
+            ],
+            'documentation' => url('/api.md'),
+        ], 429, $headers);
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
@@ -83,7 +115,26 @@ class AppServiceProvider extends ServiceProvider
         /*
          * Generous but bounded. The API is free and unauthenticated, so the only
          * thing standing between it and a scraper is this.
+         *
+         * The limiter reads from its own cache store (see config/randomly.php) so a
+         * request that is about to be rejected does not first make a database round
+         * trip to find that out.
          */
-        RateLimiter::for('randomly', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
+        RateLimiter::for('randomly', fn (Request $request) => Limit::perMinute(
+            (int) config('randomly.limits.per_minute', 60)
+        )->by($request->ip())->response($this->limitExceeded(...)));
+
+        /*
+         * Rendering is the expensive door. A PNG or WAV starts a Node process, so a
+         * caller hammering ?format=png costs orders of magnitude more than one
+         * pulling JSON — and this bucket is charged *in addition* to the one above,
+         * so a media request counts against both.
+         */
+        RateLimiter::for('randomly-media', fn (Request $request) => Limit::perMinute(
+            (int) config('randomly.limits.media_per_minute', 20)
+        )->by($request->ip())->response($this->limitExceeded(...)));
+
+        RateLimiter::for('randomly-pages', fn (Request $request) => Limit::perMinute(240)->by($request->ip()));
+
     }
 }

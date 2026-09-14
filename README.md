@@ -6,10 +6,10 @@
 
 ### Randomness, sourced from reality.
 
-**40 generators.** Numbers, words, equations, patterns, images, sound.
+**63 generators.** Numbers, words, equations, patterns, images, sound.
 Every one seeded from the physical world. Every result ships with a receipt.
 
-`890 tests` · `10 entropy sources` · `0 API keys` · `no database`
+`1,286 tests` · `10 entropy sources` · `0 API keys` · `no database`
 
 </div>
 
@@ -238,6 +238,19 @@ cannot produce returns `406` naming the ones it can — never a quiet JSON fallb
 The site's own pages call these same endpoints. There is no private path with
 different behaviour.
 
+**Rate limits** are per IP and in two buckets: 60 requests a minute, of which 20 may be
+image or audio renders. A render starts a Node process and costs orders of magnitude
+more than a JSON response, so charging both against one allowance would mean either
+throttling cheap calls needlessly or letting sixty renders saturate a box. A `429`
+returns `retry_after_seconds` and both limits, because the caller is usually a script.
+
+### Using it from an agent
+
+The repo ships a [Claude Code skill](.claude/skills/randomly-api/SKILL.md) describing the
+API — the generators, the entropy classes and what each is safe for, the reproducibility
+rules, and the error codes. Drop the repo into a project and an agent can call the API
+correctly without being told how.
+
 ---
 
 ## Every link previews itself
@@ -264,7 +277,7 @@ php artisan serve
 
 ```bash
 php artisan randomly:seed --source=drand      # draw one seed, see its receipt
-./vendor/bin/pest                             # 890 tests, no network, no database
+./vendor/bin/pest                             # 1,286 tests, no network, no database
 ```
 
 **Stack:** Laravel 13 · PHP 8.5 · Blade + Alpine 3 + Tailwind 4 · Vite · Pest.
@@ -317,5 +330,6 @@ of them could have.
 
 <div align="center">
 <br>
-<i>40 shipped · 23 specified · every one of them a class and a line of config away.</i>
+<i>Every generator the specification described is written and running.<br>
+The catalogue never counted unwritten code, which is why the number took a while to get here.</i>
 </div>

@@ -360,3 +360,185 @@ it('carries a version so a permalink cannot quietly change what it plays', funct
         expect($generator->version())->toBeGreaterThanOrEqual(1);
     }
 });
+
+// ── audio.drone ──────────────────────────────────────────────────────────────
+
+it('derives each detuning from the beat rate rather than the other way round', function (float $beating): void {
+    /*
+     * The one thing a listener can hear in a drone is the pulse, and the pulse is
+     * the *difference* between two frequencies. A fixed detuning in cents would
+     * make that difference scale with pitch — twelve cents beats twice as fast at
+     * 440 Hz as at 220 — so the control is the rate and the cents are solved for.
+     *
+     * Asserted as the arithmetic identity it is: partner − frequency is the beat
+     * rate, exactly, at every partial.
+     */
+    $score = audioScore('audio.drone', ['beating' => $beating, 'partials' => 6]);
+
+    foreach ($score['partials'] as $partial) {
+        expect($partial['partner'] - $partial['frequency'])
+            ->toEqualWithDelta($partial['beat_hz'], 0.0005);
+
+        // And the cents figure printed next to it has to describe the same two
+        // frequencies: 1200·log2(partner/frequency).
+        expect(1200 * log($partial['partner'] / $partial['frequency'], 2))
+            ->toEqualWithDelta($partial['cents'], 0.01);
+
+        // Spread around the requested rate, never a multiple of it: identical
+        // rates across every partial phase-lock into one big tremolo.
+        expect($partial['beat_hz'])->toBeGreaterThan($beating * 0.5)
+            ->and($partial['beat_hz'])->toBeLessThan($beating * 3.0);
+    }
+})->with([0.1, 0.4, 2.0]);
+
+it('stacks a drone as a harmonic series on the root it names', function (): void {
+    // Whole multiples of the root, not ratios like 3/2 — a fifth would put the
+    // ear's perceived fundamental an octave *below* anything present, which is a
+    // fine effect and a confusing thing for the tuning display to report.
+    $score = audioScore('audio.drone', ['root' => 'A', 'octave' => 2, 'partials' => 6]);
+
+    expect($score['root_hz'])->toEqualWithDelta(110.0, 0.01);
+
+    foreach ($score['partials'] as $n => $partial) {
+        expect($partial['frequency'])->toEqualWithDelta($score['root_hz'] * ($n + 1), 0.01)
+            // Amplitude falling monotonically: an upper partial louder than the
+            // fundamental stops being a drone on a note and becomes two notes.
+            ->and($partial['amplitude'])->toBeLessThanOrEqual($n === 0 ? 1.0 : $score['partials'][$n - 1]['amplitude']);
+    }
+});
+
+// ── audio.bleep ──────────────────────────────────────────────────────────────
+
+it('lays a pack out with enough silence to cut it apart', function (int $count): void {
+    /*
+     * The pack is one buffer because a zip would need a server and could not be
+     * auditioned before downloading — so the gaps are the file format. Each sound
+     * has to finish well before the next begins, or a splitter cutting on silence
+     * gets the boundaries wrong and the offsets in the meta are a lie.
+     */
+    $score = audioScore('audio.bleep', ['count' => $count]);
+
+    expect($score['sounds'])->toHaveCount($count);
+
+    foreach ($score['sounds'] as $i => $sound) {
+        expect($sound['length'])->toBeLessThan(0.75);
+
+        if ($i === 0) {
+            continue;
+        }
+
+        $previous = $score['sounds'][$i - 1];
+        expect($sound['start'] - ($previous['start'] + $previous['length']))
+            ->toEqualWithDelta($score['gap'], 0.001);
+    }
+
+    // And the buffer has to hold the last sound plus its tail.
+    $last = end($score['sounds']);
+    expect($score['duration'])->toBeGreaterThan($last['start'] + $last['length']);
+})->with([1, 4, 9]);
+
+it('gives a mixed pack one of each kind before it repeats', function (): void {
+    // Drawing at random would routinely give three coins and no error, which is
+    // the wrong answer to "a pack of UI sounds". A mixed pack cycles.
+    $kinds = array_column(audioScore('audio.bleep', ['category' => 'mixed', 'count' => 8])['sounds'], 'kind');
+
+    expect(array_slice($kinds, 0, 4))->toBe(['success', 'error', 'notify', 'coin'])
+        ->and(array_unique($kinds))->toHaveCount(4);
+});
+
+it('sends every UI sound up or down the way its category promises', function (string $category, int $direction): void {
+    /*
+     * What survives a phone speaker at arm's length is pitch direction and
+     * length, not timbre. Rising reads as success in every interface anyone has
+     * used and falling reads as failure, so the pitches in the score have to
+     * actually go that way — this is the one property of these sounds that is
+     * worth asserting rather than listening to.
+     */
+    $score = audioScore('audio.bleep', ['category' => $category, 'count' => 3]);
+
+    foreach ($score['sounds'] as $sound) {
+        $pitched = array_values(array_filter(
+            $sound['voices'],
+            fn (array $v): bool => $v['wave'] !== 'noise',
+        ));
+
+        $first = $pitched[0]['midi'];
+        $last = end($pitched)['midi'];
+
+        expect(($last - $first) * $direction)->toBeGreaterThan(0);
+    }
+})->with([
+    'success rises' => ['success', 1],
+    'error falls' => ['error', -1],
+    'coin flicks up' => ['coin', 1],
+]);
+
+// ── audio.ambient ────────────────────────────────────────────────────────────
+
+it('bounds an endless piece so the studio can render it', function (float $asked): void {
+    /*
+     * docs/09 §7 says this one runs indefinitely, and it cannot: the browser has
+     * to hold every sample before it plays one, there is no progress bar for a
+     * piece with no end, and no WAV either. Bounded and looped is the honest
+     * substitute, and the bound has to be real.
+     */
+    $score = audioScore('audio.ambient', ['duration' => $asked]);
+
+    expect($score['duration'])->toBeLessThanOrEqual(150.0)
+        ->and($score['duration'])->toEqualWithDelta(max(20.0, min(150.0, $asked)), 0.001)
+        // Long fades at both ends, because the loop point has to be inaudible.
+        ->and($score['fade'])->toBeGreaterThanOrEqual(2.0);
+})->with([20.0, 60.0, 150.0, 1000.0]);
+
+it('overlaps its chords instead of queueing them', function (): void {
+    // A chord that starts when the last one ended is a progression; ambient wants
+    // a wash, which means one chord always arriving while another leaves.
+    $score = audioScore('audio.ambient', ['duration' => 90.0]);
+
+    expect(count($score['pads']))->toBeGreaterThan(2);
+
+    foreach ($score['pads'] as $i => $pad) {
+        if ($i === 0) {
+            continue;
+        }
+
+        $previous = $score['pads'][$i - 1];
+        expect($pad['start'])->toBeLessThan($previous['start'] + $previous['length'])
+            ->and(count($pad['midi']))->toBeGreaterThanOrEqual(3);
+    }
+});
+
+it('drops its single notes at exponential gaps rather than on a grid', function (): void {
+    /*
+     * Notes on a grid are a sequence, and the ear finds the pulse within about
+     * four of them. A Poisson process has no pulse to find: sometimes two land
+     * almost together and sometimes nothing happens for twenty seconds, which is
+     * what makes the piece sound unplanned rather than merely sparse.
+     *
+     * Checked through the gaps themselves — for an exponential, the standard
+     * deviation equals the mean, and for a grid it would be zero.
+     */
+    $starts = array_column(audioScore('audio.ambient', ['duration' => 150.0, 'density' => 30.0])['motes'], 'start');
+
+    expect(count($starts))->toBeGreaterThan(30);
+
+    $gaps = [];
+    for ($i = 1; $i < count($starts); $i++) {
+        $gaps[] = $starts[$i] - $starts[$i - 1];
+    }
+
+    $mean = array_sum($gaps) / count($gaps);
+    $variance = array_sum(array_map(fn (float $g): float => ($g - $mean) ** 2, $gaps)) / count($gaps);
+
+    expect($mean)->toEqualWithDelta(2.0, 0.6)
+        ->and(sqrt($variance) / $mean)->toBeGreaterThan(0.6);
+});
+
+it('plays nothing at all when the note density is turned off', function (): void {
+    // The version to actually work to, and a generator that quietly ignored the
+    // zero would be worse than one without the control.
+    $score = audioScore('audio.ambient', ['density' => 0.0]);
+
+    expect($score['motes'])->toBe([])
+        ->and($score['pads'])->not->toBeEmpty();
+});

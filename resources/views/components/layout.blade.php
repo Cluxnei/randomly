@@ -1,4 +1,14 @@
-@props(['wide' => false, 'og' => []])
+@props([
+    'wide' => false,
+    'og' => [],
+    // Where this page's markdown twin lives, and what the crumbs above it are.
+    // Both default to the site-wide answers so a page has to opt in rather than
+    // remember, and neither is ever a hand-written string: a studio page passes
+    // the route, and the route is generated from the generator's own key.
+    'markdown' => null,
+    'canonical' => null,
+    'breadcrumbs' => [],
+])
 
 @php
     $pageTitle = isset($title) ? trim($title) . ' · Randomly' : 'Randomly · Randomness, sourced from reality.';
@@ -11,6 +21,10 @@
      * falls back to the site card, which carries the two live counts. Nothing
      * here is a stock photograph of a concept.
      */
+    // One answer for the canonical link and for og:url, so a share and a crawl
+    // agree on what this page's address is.
+    $canonicalUrl = $canonical ?? url()->current();
+
     $ogImage = $og['image'] ?? route('og.site');
     $ogDescription = $og['description']
         ?? 'A library of random generators, seeded by verifiable real-world entropy. Every result ships with a receipt.';
@@ -30,13 +44,15 @@
     <meta property="og:site_name" content="Randomly">
     <meta property="og:title" content="{{ $og['title'] ?? $pageTitle }}">
     <meta property="og:description" content="{{ $ogDescription }}">
-    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
     <meta property="og:image" content="{{ $ogImage }}">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="{{ $og['alt'] ?? 'A dark card reading “Randomness, sourced from reality.”' }}">
     <meta name="twitter:card" content="summary_large_image">
+
+    <x-seo :canonical="$canonicalUrl" :markdown="$markdown" :breadcrumbs="$breadcrumbs" />
 
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
